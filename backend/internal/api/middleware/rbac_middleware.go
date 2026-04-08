@@ -4,11 +4,11 @@ import (
 	"net/http"
 
 	"backend/internal/pkg/utils"
-	"backend/internal/service"
+	accesssvc "backend/internal/service/access"
 	"github.com/gin-gonic/gin"
 )
 
-func RBACMiddleware(casbinSvc *service.CasbinService) gin.HandlerFunc {
+func RBACMiddleware(casbinSvc *accesssvc.CasbinService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		claims, ok := GetClaims(c)
 		if !ok {

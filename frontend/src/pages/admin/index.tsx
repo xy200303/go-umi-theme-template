@@ -1,6 +1,10 @@
 import { Navigate } from '@/lib/router';
-import { adminRoutePaths } from '@/constants/routes';
+import { routePaths } from '@/constants/routes';
+import { getFirstAccessibleAdminPath } from '@/lib/access';
+import { useAuthStore } from '@/stores';
 
 export default function AdminIndexPage() {
-  return <Navigate replace to={adminRoutePaths.home} />;
+  const user = useAuthStore((state) => state.user);
+
+  return <Navigate replace to={getFirstAccessibleAdminPath(user) ?? routePaths.home} />;
 }

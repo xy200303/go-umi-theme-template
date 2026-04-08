@@ -1,4 +1,4 @@
-package repository
+package rolerepo
 
 import (
 	"backend/internal/models/entities"

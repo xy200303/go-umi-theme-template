@@ -3,6 +3,7 @@ import { Tag } from 'antd';
 import MainNavbar from '@/components/layout/MainNavbar';
 import TechStatCard from '@/components/ui/TechStatCard';
 import { getStats } from '@/api/endpoints/admin';
+import { hasAccess } from '@/lib/access';
 import { useAuthStore } from '@/stores';
 import { useI18n } from '@/i18n';
 import styles from './index.module.css';
@@ -13,11 +14,12 @@ export default function HomePage() {
     roles: '-',
     configs: '-'
   });
-  const { user, isAdmin } = useAuthStore();
+  const { user } = useAuthStore();
+  const canViewAdminStats = hasAccess(user, 'admin.dashboard');
   const { t } = useI18n();
 
   useEffect(() => {
-    if (!isAdmin()) return;
+    if (!canViewAdminStats) return;
     getStats()
       .then((res) => {
         setStats({
@@ -29,7 +31,7 @@ export default function HomePage() {
       .catch(() => {
         setStats({ users: '-', roles: '-', configs: '-' });
       });
-  }, [isAdmin]);
+  }, [canViewAdminStats]);
 
   return (
     <div className="app-shell p-3 pb-8">
@@ -60,9 +62,9 @@ export default function HomePage() {
         </section>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <TechStatCard title={t('home.metric.users')} value={isAdmin() ? stats.users : t('home.metric.extensible')} />
-          <TechStatCard title={t('home.metric.roles')} value={isAdmin() ? stats.roles : t('home.metric.casbin')} />
-          <TechStatCard title={t('home.metric.configs')} value={isAdmin() ? stats.configs : t('home.metric.kv')} />
+          <TechStatCard title={t('home.metric.users')} value={canViewAdminStats ? stats.users : t('home.metric.extensible')} />
+          <TechStatCard title={t('home.metric.roles')} value={canViewAdminStats ? stats.roles : t('home.metric.casbin')} />
+          <TechStatCard title={t('home.metric.configs')} value={canViewAdminStats ? stats.configs : t('home.metric.kv')} />
         </div>
       </main>
     </div>

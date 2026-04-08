@@ -2,18 +2,18 @@ import { useState, type FormEvent } from 'react';
 import { Button, Input, Tag } from 'antd';
 import { useNavigate } from '@/lib/router';
 import { register, sendSmsCode } from '@/api/endpoints/auth';
-import { getClientEnv } from '@/lib/env';
+import { useSmsVerifyEnabled } from '@/lib/auth-config';
 import { useAuthStore } from '@/stores';
 import { useI18n } from '@/i18n';
 import { notifyError, notifySuccess, notifyWarning } from '@/lib/notify';
 
 const usernameReg = /^[A-Za-z0-9_]+$/;
-const smsVerifyEnabled = (getClientEnv('SMS_VERIFY_ENABLED') ?? 'true') === 'true';
 
 type RegisterFormValues = {
   username: string;
   phone: string;
   password: string;
+  confirm_password: string;
   code?: string;
 };
 
@@ -23,9 +23,10 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const { setLogin } = useAuthStore();
   const { t } = useI18n();
+  const smsVerifyEnabled = useSmsVerifyEnabled();
   const [loading, setLoading] = useState(false);
   const [smsLoading, setSmsLoading] = useState(false);
-  const [form, setForm] = useState<RegisterFormValues>({ username: '', phone: '', password: '', code: '' });
+  const [form, setForm] = useState<RegisterFormValues>({ username: '', phone: '', password: '', confirm_password: '', code: '' });
 
   const onSendCode = async () => {
     if (!smsVerifyEnabled) return;
@@ -46,12 +47,16 @@ export default function RegisterPage() {
 
   const onSubmit = async (evt: FormEvent<HTMLFormElement>) => {
     evt.preventDefault();
-    if (!form.username || !form.phone || !form.password) {
+    if (!form.username || !form.phone || !form.password || !form.confirm_password) {
       notifyWarning(t('auth.registerFailed'));
       return;
     }
     if (!usernameReg.test(form.username)) {
       notifyWarning(t('auth.usernameRule'));
+      return;
+    }
+    if (form.password !== form.confirm_password) {
+      notifyWarning(t('auth.passwordConfirmMismatch'));
       return;
     }
     if (smsVerifyEnabled && !form.code) {
@@ -61,7 +66,9 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      const payload = smsVerifyEnabled ? form : { username: form.username, phone: form.phone, password: form.password };
+      const payload = smsVerifyEnabled
+        ? { username: form.username, phone: form.phone, password: form.password, code: form.code }
+        : { username: form.username, phone: form.phone, password: form.password };
       const resp = await register(payload);
       setLogin(resp.token, resp.user);
       notifySuccess(t('auth.registerSuccess'));
@@ -121,6 +128,15 @@ export default function RegisterPage() {
                   placeholder={t('auth.passwordRule')}
                   value={form.password}
                   onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
+                />
+              </label>
+              <label className="block">
+                <span className={labelCls}>{t('auth.confirmPassword')}</span>
+                <Input.Password
+                  className="ant-surface-input"
+                  placeholder={t('auth.confirmPasswordPlaceholder')}
+                  value={form.confirm_password}
+                  onChange={(e) => setForm((prev) => ({ ...prev, confirm_password: e.target.value }))}
                 />
               </label>
               {smsVerifyEnabled && (

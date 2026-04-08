@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Spin, Switch, Table, Tag } from 'antd';
+import { CameraOutlined, LoadingOutlined } from '@ant-design/icons';
+import { Button, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Spin, Switch, Table, Tag, Upload } from 'antd';
+import type { UploadProps } from 'antd';
 import AdminLayout from '../../layout';
 import {
   createEmptyPasswordFormValues,
@@ -24,6 +26,8 @@ import {
   type RoleItem,
   type UpdateAdminUserPayload
 } from '@/api/endpoints/admin';
+import AppAvatar from '@/components/ui/AppAvatar';
+import { uploadUserFile } from '@/api/endpoints/file';
 import { useI18n } from '@/i18n';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { useAuthStore } from '@/stores';
@@ -37,6 +41,7 @@ export default function AdminUsersPage() {
   const [userKeyword, setUserKeyword] = useState('');
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [userModalSubmitting, setUserModalSubmitting] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [editingUser, setEditingUser] = useState<AuthUser | null>(null);
   const [userFormData, setUserFormData] = useState<UserFormValues>(createEmptyUserFormValues());
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
@@ -70,7 +75,7 @@ export default function AdminUsersPage() {
     phone: values.phone.trim(),
     password: values.password?.trim() || '',
     email: values.email.trim(),
-    avatar_url: undefined,
+    avatar_file_id: values.avatar_file_id.trim() || undefined,
     signature: values.signature.trim(),
     gender: values.gender,
     age: Number(values.age ?? 0),
@@ -82,7 +87,7 @@ export default function AdminUsersPage() {
     username: values.username.trim(),
     phone: values.phone.trim(),
     email: values.email.trim(),
-    avatar_url: editingUser?.avatar_url?.trim() || undefined,
+    avatar_file_id: values.avatar_file_id.trim() || undefined,
     signature: values.signature.trim(),
     gender: values.gender,
     age: Number(values.age ?? 0),
@@ -108,6 +113,7 @@ export default function AdminUsersPage() {
   const closeUserModal = () => {
     setUserModalOpen(false);
     setEditingUser(null);
+    setAvatarUploading(false);
     setUserFormData(createEmptyUserFormValues());
   };
 
@@ -175,6 +181,34 @@ export default function AdminUsersPage() {
       notifyError(extractApiErrorMessage(error) ?? (editingUser ? t('admin.userUpdateFailed') : t('admin.userCreateFailed')));
     } finally {
       setUserModalSubmitting(false);
+    }
+  };
+
+  const avatarUploadProps: UploadProps = {
+    accept: 'image/*',
+    maxCount: 1,
+    showUploadList: false,
+    customRequest: async ({ file, onSuccess, onError }) => {
+      if (!(file instanceof File)) {
+        onError?.(new Error('Invalid file'));
+        return;
+      }
+
+      setAvatarUploading(true);
+      try {
+        const uploaded = await uploadUserFile(file);
+        updateUserFormData({
+          avatar_url: uploaded.file_url,
+          avatar_file_id: uploaded.id
+        });
+        notifySuccess(t('profile.avatarUploaded'));
+        onSuccess?.({ avatar_url: uploaded.file_url, avatar_file_id: uploaded.id });
+      } catch (error) {
+        notifyError(t('profile.uploadFailed'));
+        onError?.(error instanceof Error ? error : new Error('Upload failed'));
+      } finally {
+        setAvatarUploading(false);
+      }
     }
   };
 
@@ -300,7 +334,7 @@ export default function AdminUsersPage() {
                 width: 280,
                 render: (_: unknown, record: AuthUser) => (
                   <Select
-                    className="w-full min-w-[220px]"
+                    className="ant-surface-select w-full min-w-[220px]"
                     disabled={record.username === 'admin'}
                     mode="multiple"
                     value={record.roles ?? []}
@@ -357,6 +391,29 @@ export default function AdminUsersPage() {
         width={760}
       >
         <div className="space-y-4">
+          <div className="flex justify-center">
+            <Upload {...avatarUploadProps}>
+              <button
+                className="group flex flex-col items-center gap-2 rounded-full border-0 bg-transparent p-0 text-inherit outline-none transition-transform hover:scale-[1.02]"
+                type="button"
+              >
+                <div className="relative">
+                  <AppAvatar
+                    className="!h-24 !w-24 !bg-gradient-to-br !from-blue-100 !to-cyan-100 !text-xl !font-semibold !text-blue-700"
+                    size={96}
+                    src={userFormData.avatar_url}
+                  >
+                    {(userFormData.username.slice(0, 1) || editingUser?.username?.slice(0, 1) || 'U').toUpperCase()}
+                  </AppAvatar>
+                  <span className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center rounded-full bg-slate-900/0 text-white opacity-0 transition-all duration-200 group-hover:bg-slate-900/45 group-hover:opacity-100">
+                    {avatarUploading ? <LoadingOutlined className="text-lg" /> : <CameraOutlined className="text-lg" />}
+                    <span className="mt-1 text-[11px] font-medium">{avatarUploading ? t('profile.avatarUploading') : t('profile.avatarUploadTrigger')}</span>
+                  </span>
+                </div>
+              </button>
+            </Upload>
+          </div>
+
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {!editingUser ? (
               <label className="block">
@@ -406,7 +463,7 @@ export default function AdminUsersPage() {
               <span className={formLabelClassName}>{t('profile.gender')}</span>
               <Select
                 allowClear
-                className="w-full"
+                className="ant-surface-select w-full"
                 options={[
                   { value: 'male', label: t('profile.genderMale') },
                   { value: 'female', label: t('profile.genderFemale') },

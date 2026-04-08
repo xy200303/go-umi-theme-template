@@ -1,4 +1,4 @@
-package repository
+package systemrepo
 
 import (
 	"backend/internal/models/entities"
@@ -39,4 +39,16 @@ func (r *SystemConfigRepository) Count() (int64, error) {
 	var count int64
 	err := r.db.Model(&entities.SystemConfig{}).Count(&count).Error
 	return count, err
+}
+
+func (r *SystemConfigRepository) GetByKey(configKey string) (*entities.SystemConfig, error) {
+	var item entities.SystemConfig
+	if err := r.db.Where("config_key = ?", configKey).First(&item).Error; err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+func (r *SystemConfigRepository) FindByKey(configKey string) (*entities.SystemConfig, error) {
+	return r.GetByKey(configKey)
 }

@@ -1,11 +1,11 @@
 package requests
 
 type UpdateProfileReq struct {
-	Email     string `json:"email"`
-	AvatarURL string `json:"avatar_url"`
-	Signature string `json:"signature"`
-	Gender    string `json:"gender"`
-	Age       int    `json:"age"`
+	Email        string `json:"email"`
+	AvatarFileID string `json:"avatar_file_id"`
+	Signature    string `json:"signature"`
+	Gender       string `json:"gender"`
+	Age          int    `json:"age"`
 }
 
 type ResetPasswordReq struct {

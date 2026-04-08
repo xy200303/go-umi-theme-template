@@ -6,12 +6,20 @@
   },
   "tags": [
     {
+      "name": "audits",
+      "description": "日志审计"
+    },
+    {
       "name": "configs",
       "description": "系统配置"
     },
     {
       "name": "dashboard",
       "description": "仪表盘"
+    },
+    {
+      "name": "files",
+      "description": "文件中心"
     },
     {
       "name": "profile",
@@ -27,6 +35,36 @@
     }
   ],
   "paths": {
+    "/api/v1/admin/audit-logs": {
+      "get": {
+        "summary": "查看日志审计",
+        "description": "允许分页查看用户接口操作审计日志",
+        "tags": [
+          "audits"
+        ],
+        "operationId": "audits.list"
+      }
+    },
+    "/api/v1/admin/files": {
+      "get": {
+        "summary": "查看文件列表",
+        "description": "允许分页查看后台文件上传记录并按条件筛选",
+        "tags": [
+          "files"
+        ],
+        "operationId": "files.admin.list"
+      }
+    },
+    "/api/v1/admin/files/stats": {
+      "get": {
+        "summary": "查看文件统计",
+        "description": "允许查看后台文件上传状态统计数据",
+        "tags": [
+          "files"
+        ],
+        "operationId": "files.admin.stats"
+      }
+    },
     "/api/v1/admin/roles": {
       "get": {
         "summary": "查看角色列表",
@@ -165,14 +203,34 @@
         "operationId": "users.roles"
       }
     },
-    "/api/v1/user/avatar/upload": {
+    "/api/v1/user/files/direct/complete": {
       "post": {
-        "summary": "上传头像",
-        "description": "允许上传并更新当前登录用户头像",
+        "summary": "完成直传",
+        "description": "统一文件直传完成接口，OSS 模式下回写文件元数据",
         "tags": [
-          "profile"
+          "files"
         ],
-        "operationId": "profile.avatar"
+        "operationId": "files.direct.complete"
+      }
+    },
+    "/api/v1/user/files/direct/init": {
+      "post": {
+        "summary": "初始化直传",
+        "description": "统一文件直传初始化接口，OSS 模式下返回预签名上传信息",
+        "tags": [
+          "files"
+        ],
+        "operationId": "files.direct.init"
+      }
+    },
+    "/api/v1/user/files/upload": {
+      "post": {
+        "summary": "上传文件",
+        "description": "统一文件上传入口，返回 file_id 和访问地址供后续业务绑定",
+        "tags": [
+          "files"
+        ],
+        "operationId": "files.upload"
       }
     },
     "/api/v1/user/password/reset": {

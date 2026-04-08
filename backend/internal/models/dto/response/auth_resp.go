@@ -10,3 +10,7 @@ type LoginResp struct {
 	Token TokenResp `json:"token"`
 	User  UserResp  `json:"user"`
 }
+
+type AuthOptionsResp struct {
+	SMSVerifyEnabled bool `json:"sms_verify_enabled"`
+}

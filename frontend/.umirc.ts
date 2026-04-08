@@ -5,6 +5,7 @@ import { defineConfig } from 'umi';
 export default defineConfig({
   npmClient: 'npm',
   hash: false,
+  mfsu: false,
   esbuildMinifyIIFE: true,
   outputPath: '../backend/web',
   extraPostCSSPlugins: [
@@ -34,8 +35,10 @@ export default defineConfig({
     { path: '/admin', component: '@/pages/admin' },
     { path: '/admin/home', component: '@/pages/admin/home' },
     { path: '/admin/system/users', component: '@/pages/admin/system/users' },
+    { path: '/admin/system/files', component: '@/pages/admin/system/files' },
     { path: '/admin/system/config', component: '@/pages/admin/system/config' },
     { path: '/admin/system/role', component: '@/pages/admin/system/role' },
+    { path: '/admin/system/audit', component: '@/pages/admin/system/audit' },
     { path: '*', component: '@/pages/404' }
   ]
 });

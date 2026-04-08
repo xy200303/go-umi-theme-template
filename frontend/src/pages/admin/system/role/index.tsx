@@ -7,11 +7,13 @@ import {
   createEmptyRoleFormValues,
   extractApiErrorMessage,
   formLabelClassName,
+  getPolicyTemplateScopeKey,
   getPolicyMethodColor,
   mapRoleToFormValues,
   matchesPolicyTemplate,
   uniquePolicies,
   type PolicyTemplate,
+  type PolicyTemplateScopeKey,
   type PolicyTemplateSection,
   type RoleFormValues
 } from '../../common';
@@ -73,6 +75,38 @@ export default function AdminRolesPage() {
     });
     return Array.from(grouped.entries()).map(([menuKey, value]) => ({ menuKey, ...value }));
   }, [policyTemplates]);
+  const policySectionsByScope = useMemo(() => {
+    const scopeOrder: PolicyTemplateScopeKey[] = ['admin', 'user', 'other'];
+    const scopeLabels: Record<PolicyTemplateScopeKey, string> = {
+      admin: t('admin.policyGroupAdmin'),
+      user: t('admin.policyGroupUser'),
+      other: t('admin.policyGroupOther')
+    };
+    const grouped = new Map<PolicyTemplateScopeKey, PolicyTemplateSection[]>();
+
+    policyTemplatesByMenu.forEach((section) => {
+      const firstItem = section.items[0];
+      if (!firstItem) {
+        return;
+      }
+
+      const scopeKey = getPolicyTemplateScopeKey(firstItem.path);
+      const existing = grouped.get(scopeKey);
+      if (existing) {
+        existing.push(section);
+        return;
+      }
+      grouped.set(scopeKey, [section]);
+    });
+
+    return scopeOrder
+      .map((scopeKey) => ({
+        scopeKey,
+        scopeLabel: scopeLabels[scopeKey],
+        sections: grouped.get(scopeKey) ?? []
+      }))
+      .filter((group) => group.sections.length > 0);
+  }, [policyTemplatesByMenu, t]);
   const selectedPolicyKeySet = useMemo(() => new Set(selectedPolicyKeys), [selectedPolicyKeys]);
   const isReservedRole = (roleName?: string) => roleName === 'admin';
 
@@ -379,73 +413,94 @@ export default function AdminRolesPage() {
       >
         <p className="py-2 text-sm text-slate-500">{t('admin.policyHint')}</p>
         <div className="max-h-[520px] space-y-4 overflow-y-auto pr-1">
-          {policyTemplatesByMenu.map((section) => {
-            const selectedCount = section.items.filter((item) => selectedPolicyKeySet.has(item.key)).length;
-            const allSelected = section.items.length > 0 && selectedCount === section.items.length;
+          {policySectionsByScope.map((group) => {
+            const groupTotalCount = group.sections.reduce((count, section) => count + section.items.length, 0);
+            const groupSelectedCount = group.sections.reduce(
+              (count, section) => count + section.items.filter((item) => selectedPolicyKeySet.has(item.key)).length,
+              0
+            );
 
             return (
-              <section key={section.menuKey} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <h4 className="text-sm font-semibold text-sky-900">{section.menuLabel}</h4>
-                    <Tag color="blue">
-                      {selectedCount}/{section.items.length}
-                    </Tag>
-                  </div>
-                  <Button
-                    className="ant-surface-btn-outline !h-8 !px-3"
-                    onClick={() =>
-                      setSelectedPolicyKeys((previous) => {
-                        const next = new Set(previous);
-                        section.items.forEach((item) => {
-                          if (allSelected) {
-                            next.delete(item.key);
-                          } else {
-                            next.add(item.key);
-                          }
-                        });
-                        return Array.from(next);
-                      })
-                    }
-                    type="default"
-                  >
-                    {allSelected ? t('admin.clearSelection') : t('admin.selectAll')}
-                  </Button>
+              <section key={group.scopeKey} className="rounded-3xl border border-sky-200/70 bg-sky-50/60 p-4">
+                <div className="mb-4 flex flex-wrap items-center gap-3 border-b border-sky-200/70 pb-3">
+                  <h3 className="text-base font-semibold text-sky-950">{group.scopeLabel}</h3>
+                  <Tag color="processing">
+                    {groupSelectedCount}/{groupTotalCount}
+                  </Tag>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  {section.items.map((item) => {
-                    const checked = selectedPolicyKeySet.has(item.key);
+                <div className="space-y-4">
+                  {group.sections.map((section) => {
+                    const selectedCount = section.items.filter((item) => selectedPolicyKeySet.has(item.key)).length;
+                    const allSelected = section.items.length > 0 && selectedCount === section.items.length;
+
                     return (
-                      <label
-                        key={item.key}
-                        className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition ${
-                          checked ? 'border-blue-300 bg-blue-50' : 'border-slate-200 bg-white hover:border-blue-200 hover:bg-slate-50'
-                        }`}
-                      >
-                        <Checkbox
-                          checked={checked}
-                          onChange={(event) =>
-                            setSelectedPolicyKeys((previous) => {
-                              const next = new Set(previous);
-                              if (event.target.checked) {
-                                next.add(item.key);
-                              } else {
-                                next.delete(item.key);
-                              }
-                              return Array.from(next);
-                            })
-                          }
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm font-medium text-slate-800">{item.actionLabel}</span>
-                            <Tag color={getPolicyMethodColor(item.method)}>{item.method}</Tag>
+                      <section key={section.menuKey} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                        <div className="mb-3 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <h4 className="text-sm font-semibold text-sky-900">{section.menuLabel}</h4>
+                            <Tag color="blue">
+                              {selectedCount}/{section.items.length}
+                            </Tag>
                           </div>
-                          {item.description ? <p className="mt-1 text-xs leading-5 text-slate-500">{item.description}</p> : null}
-                          <code className="mt-1 block break-all text-xs text-slate-500">{item.path}</code>
+                          <Button
+                            className="ant-surface-btn-outline !h-8 !px-3"
+                            onClick={() =>
+                              setSelectedPolicyKeys((previous) => {
+                                const next = new Set(previous);
+                                section.items.forEach((item) => {
+                                  if (allSelected) {
+                                    next.delete(item.key);
+                                  } else {
+                                    next.add(item.key);
+                                  }
+                                });
+                                return Array.from(next);
+                              })
+                            }
+                            type="default"
+                          >
+                            {allSelected ? t('admin.clearSelection') : t('admin.selectAll')}
+                          </Button>
                         </div>
-                      </label>
+
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                          {section.items.map((item) => {
+                            const checked = selectedPolicyKeySet.has(item.key);
+                            return (
+                              <label
+                                key={item.key}
+                                className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition ${
+                                  checked ? 'border-blue-300 bg-blue-50' : 'border-slate-200 bg-white hover:border-blue-200 hover:bg-slate-50'
+                                }`}
+                              >
+                                <Checkbox
+                                  checked={checked}
+                                  onChange={(event) =>
+                                    setSelectedPolicyKeys((previous) => {
+                                      const next = new Set(previous);
+                                      if (event.target.checked) {
+                                        next.add(item.key);
+                                      } else {
+                                        next.delete(item.key);
+                                      }
+                                      return Array.from(next);
+                                    })
+                                  }
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-sm font-medium text-slate-800">{item.actionLabel}</span>
+                                    <Tag color={getPolicyMethodColor(item.method)}>{item.method}</Tag>
+                                  </div>
+                                  {item.description ? <p className="mt-1 text-xs leading-5 text-slate-500">{item.description}</p> : null}
+                                  <code className="mt-1 block break-all text-xs text-slate-500">{item.path}</code>
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </section>
                     );
                   })}
                 </div>

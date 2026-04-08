@@ -13,7 +13,7 @@ export interface CreateAdminUserPayload {
   phone: string;
   password: string;
   email: string;
-  avatar_url?: string;
+  avatar_file_id?: string;
   signature: string;
   gender: string;
   age: number;
@@ -25,7 +25,7 @@ export interface UpdateAdminUserPayload {
   username: string;
   phone: string;
   email: string;
-  avatar_url?: string;
+  avatar_file_id?: string;
   signature: string;
   gender: string;
   age: number;
@@ -62,6 +62,61 @@ export interface SystemConfigItem {
   remark: string;
 }
 
+export interface AuditLogItem {
+  id: number;
+  user_id: number;
+  username: string;
+  method: string;
+  route_path: string;
+  request_path: string;
+  operation_id: string;
+  operation_name: string;
+  menu_key: string;
+  menu_label: string;
+  status_code: number;
+  client_ip: string;
+  user_agent: string;
+  duration_ms: number;
+  created_at: string;
+}
+
+export interface AuditLogListResponse {
+  list: AuditLogItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface AdminFileItem {
+  id: string;
+  storage_driver: string;
+  storage_path: string;
+  original_name: string;
+  ext: string;
+  mime_type: string;
+  size: number;
+  upload_status: string;
+  uploaded_by: number;
+  remark: string;
+  file_url: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminFileListResponse {
+  list: AdminFileItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface AdminFileStats {
+  total_count: number;
+  uploaded_count: number;
+  bound_count: number;
+  deleted_count: number;
+}
+
 export async function getStats(): Promise<SystemStats> {
   const { data } = await http.get<ApiEnvelope<SystemStats>>('/admin/stats');
   return data.data;
@@ -69,6 +124,35 @@ export async function getStats(): Promise<SystemStats> {
 
 export async function listPolicyTemplates(): Promise<PolicyTemplateItem[]> {
   const { data } = await http.get<ApiEnvelope<PolicyTemplateItem[]>>('/admin/policy-templates');
+  return data.data;
+}
+
+export async function listAuditLogs(params?: {
+  keyword?: string;
+  menu_key?: string;
+  status_code?: number;
+  page?: number;
+  page_size?: number;
+}): Promise<AuditLogListResponse> {
+  const { data } = await http.get<ApiEnvelope<AuditLogListResponse>>('/admin/audit-logs', { params });
+  return data.data;
+}
+
+export async function listAdminFiles(params?: {
+  keyword?: string;
+  upload_status?: string;
+  page?: number;
+  page_size?: number;
+}): Promise<AdminFileListResponse> {
+  const { data } = await http.get<ApiEnvelope<AdminFileListResponse>>('/admin/files', { params });
+  return data.data;
+}
+
+export async function getAdminFileStats(params?: {
+  keyword?: string;
+  upload_status?: string;
+}): Promise<AdminFileStats> {
+  const { data } = await http.get<ApiEnvelope<AdminFileStats>>('/admin/files/stats', { params });
   return data.data;
 }
 

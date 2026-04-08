@@ -7,6 +7,8 @@ export type UserFormValues = {
   phone: string;
   password?: string;
   email: string;
+  avatar_url: string;
+  avatar_file_id: string;
   signature: string;
   gender: string;
   age?: number | null;
@@ -46,6 +48,8 @@ export type PolicyTemplateSection = {
   items: PolicyTemplate[];
 };
 
+export type PolicyTemplateScopeKey = 'admin' | 'user' | 'other';
+
 export const formLabelClassName = 'mb-1 block text-sm font-medium text-slate-600';
 export const usernamePattern = /^[A-Za-z0-9_]+$/;
 
@@ -58,6 +62,11 @@ const POLICY_METHOD_COLORS: Record<string, string> = {
 
 const SECTION_AGGREGATE_POLICIES: Record<string, RolePolicy[]> = {
   dashboard: [{ method: 'GET', path: '/api/v1/admin/stats' }],
+  audits: [{ method: 'GET', path: '/api/v1/admin/audit-logs' }],
+  files: [
+    { method: 'GET', path: '/api/v1/admin/files' },
+    { method: 'GET', path: '/api/v1/admin/files/stats' }
+  ],
   users: [
     { method: '(GET|POST)', path: '/api/v1/admin/users' },
     { method: '(PUT|DELETE)', path: '/api/v1/admin/users/*' }
@@ -79,6 +88,8 @@ export function createEmptyUserFormValues(): UserFormValues {
     phone: '',
     password: '',
     email: '',
+    avatar_url: '',
+    avatar_file_id: '',
     signature: '',
     gender: '',
     age: undefined,
@@ -92,6 +103,8 @@ export function mapUserToFormValues(user: AuthUser): UserFormValues {
     phone: user.phone,
     password: '',
     email: user.email ?? '',
+    avatar_url: user.avatar_url ?? '',
+    avatar_file_id: '',
     signature: user.signature ?? '',
     gender: user.gender ?? '',
     age: user.age,
@@ -152,6 +165,13 @@ export function formatDateTime(value?: string): string {
   return parsed.toLocaleString();
 }
 
+export function formatDurationMS(value?: number): string {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return '-';
+  }
+  return `${value} ms`;
+}
+
 export function extractApiErrorMessage(error: unknown): string | null {
   if (isAxiosError<{ message?: string }>(error)) {
     return error.response?.data?.message ?? error.message ?? null;
@@ -166,10 +186,6 @@ export function getPolicyMethodColor(method: string): string {
   return POLICY_METHOD_COLORS[method] ?? 'default';
 }
 
-function uniqueStrings(values: string[]): string[] {
-  return Array.from(new Set(values));
-}
-
 export function uniquePolicies(policies: RolePolicy[]): RolePolicy[] {
   const seen = new Set<string>();
   return policies.filter((policy) => {
@@ -180,14 +196,6 @@ export function uniquePolicies(policies: RolePolicy[]): RolePolicy[] {
     seen.add(key);
     return true;
   });
-}
-
-function buildMethodPattern(methods: string[]): string {
-  const uniqueMethods = uniqueStrings(methods);
-  if (uniqueMethods.length <= 1) {
-    return uniqueMethods[0] ?? '';
-  }
-  return `(${uniqueMethods.join('|')})`;
 }
 
 function escapeRegExp(value: string): string {
@@ -218,31 +226,26 @@ export function buildSectionAggregatePolicies(menuKey: string): RolePolicy[] {
   return SECTION_AGGREGATE_POLICIES[menuKey] ?? [];
 }
 
+export function getPolicyTemplateScopeKey(path: string): PolicyTemplateScopeKey {
+  if (path.startsWith('/api/v1/admin/')) {
+    return 'admin';
+  }
+  if (path.startsWith('/api/v1/user/')) {
+    return 'user';
+  }
+  return 'other';
+}
+
 export function buildPoliciesFromSelection(selectedKeys: string[], sections: PolicyTemplateSection[]): RolePolicy[] {
   const selectedKeySet = new Set(selectedKeys);
   const policies: RolePolicy[] = [];
 
   sections.forEach((section) => {
-    if (section.items.length > 0 && section.items.every((item) => selectedKeySet.has(item.key))) {
-      policies.push(...buildSectionAggregatePolicies(section.menuKey));
-      return;
-    }
-
-    const groupedByPath = new Map<string, string[]>();
     section.items
       .filter((item) => selectedKeySet.has(item.key))
       .forEach((item) => {
-        const existing = groupedByPath.get(item.path);
-        if (existing) {
-          existing.push(item.method);
-          return;
-        }
-        groupedByPath.set(item.path, [item.method]);
+        policies.push({ path: item.path, method: item.method });
       });
-
-    groupedByPath.forEach((methods, path) => {
-      policies.push({ path, method: buildMethodPattern(methods) });
-    });
   });
 
   return uniquePolicies(policies);

@@ -6,7 +6,7 @@ import (
 	"backend/internal/api/routes"
 	"backend/internal/models/entities"
 	"backend/internal/pkg/utils"
-	"backend/internal/service"
+	accesssvc "backend/internal/service/access"
 	"gorm.io/gorm"
 )
 
@@ -16,6 +16,8 @@ func AutoMigrateAndSeed(db *gorm.DB, app *routes.AppContext) error {
 		&entities.Role{},
 		&entities.UserRole{},
 		&entities.SystemConfig{},
+		&entities.AuditLog{},
+		&entities.File{},
 	); err != nil {
 		return fmt.Errorf("auto migrate failed: %w", err)
 	}
@@ -34,6 +36,10 @@ func AutoMigrateAndSeed(db *gorm.DB, app *routes.AppContext) error {
 	}
 
 	if err := seedInitAdmin(db, app, adminRole); err != nil {
+		return err
+	}
+
+	if err := seedSystemConfigs(db); err != nil {
 		return err
 	}
 
@@ -77,17 +83,37 @@ func seedInitAdmin(db *gorm.DB, app *routes.AppContext, adminRole entities.Role)
 	return db.Model(admin).Association("Roles").Append(&adminRole)
 }
 
-func seedDefaultPolicies(casbinSvc *service.CasbinService) error {
-	if err := casbinSvc.SetRolePolicies("user", []service.Policy{
+func seedDefaultPolicies(casbinSvc *accesssvc.CasbinService) error {
+	if err := casbinSvc.SetRolePolicies("user", []accesssvc.Policy{
 		{Path: "/api/v1/user/*", Method: "(GET|PUT|POST)"},
 	}); err != nil {
 		return err
 	}
-	if err := casbinSvc.SetRolePolicies("admin", []service.Policy{
+	if err := casbinSvc.SetRolePolicies("admin", []accesssvc.Policy{
 		{Path: "/api/v1/admin/*", Method: "(GET|POST|PUT|DELETE)"},
 		{Path: "/api/v1/user/*", Method: "(GET|PUT|POST)"},
 	}); err != nil {
 		return err
 	}
+	return nil
+}
+
+func seedSystemConfigs(db *gorm.DB) error {
+	defaultConfigs := []entities.SystemConfig{
+		{
+			ConfigGroup: "audit",
+			ConfigKey:   "audit.max_records",
+			ConfigVal:   "10000",
+			Remark:      "审计日志保留上限，超出后自动删除更早记录",
+		},
+	}
+
+	for _, item := range defaultConfigs {
+		config := item
+		if err := db.Where("config_key = ?", config.ConfigKey).FirstOrCreate(&config).Error; err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

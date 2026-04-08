@@ -1,4 +1,4 @@
-package service
+package authsvc
 
 import (
 	"context"
@@ -12,7 +12,11 @@ import (
 	"backend/internal/models/mapper"
 	"backend/internal/pkg/config"
 	"backend/internal/pkg/utils"
-	"backend/internal/repository"
+	authrepo "backend/internal/repository/auth"
+	rolerepo "backend/internal/repository/role"
+	userrepo "backend/internal/repository/user"
+	accesssvc "backend/internal/service/access"
+	filesvc "backend/internal/service/file"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -20,18 +24,22 @@ import (
 
 type AuthService struct {
 	cfg         *config.Config
-	userRepo    *repository.UserRepository
-	roleRepo    *repository.RoleRepository
-	refreshRepo *repository.RefreshTokenRepository
+	userRepo    *userrepo.UserRepository
+	roleRepo    *rolerepo.RoleRepository
+	refreshRepo *authrepo.RefreshTokenRepository
 	smsService  *SMSService
+	casbin      *accesssvc.CasbinService
+	fileService *filesvc.FileService
 }
 
 func NewAuthService(
 	cfg *config.Config,
-	userRepo *repository.UserRepository,
-	roleRepo *repository.RoleRepository,
-	refreshRepo *repository.RefreshTokenRepository,
+	userRepo *userrepo.UserRepository,
+	roleRepo *rolerepo.RoleRepository,
+	refreshRepo *authrepo.RefreshTokenRepository,
 	smsService *SMSService,
+	casbin *accesssvc.CasbinService,
+	fileService *filesvc.FileService,
 ) *AuthService {
 	return &AuthService{
 		cfg:         cfg,
@@ -39,10 +47,21 @@ func NewAuthService(
 		roleRepo:    roleRepo,
 		refreshRepo: refreshRepo,
 		smsService:  smsService,
+		casbin:      casbin,
+		fileService: fileService,
+	}
+}
+
+func (s *AuthService) GetAuthOptions() *response.AuthOptionsResp {
+	return &response.AuthOptionsResp{
+		SMSVerifyEnabled: s.cfg.SMSVerifyEnabled,
 	}
 }
 
 func (s *AuthService) SendSMSCode(ctx context.Context, req requests.SendSMSCodeReq) error {
+	if !s.cfg.SMSVerifyEnabled {
+		return fmt.Errorf("短信验证码功能未开启")
+	}
 	if err := utils.ValidatePhone(req.Phone); err != nil {
 		return err
 	}
@@ -130,6 +149,9 @@ func (s *AuthService) LoginWithPassword(ctx context.Context, req requests.Passwo
 }
 
 func (s *AuthService) LoginWithSMS(ctx context.Context, req requests.SMSLoginReq) (*response.LoginResp, error) {
+	if !s.cfg.SMSVerifyEnabled {
+		return nil, fmt.Errorf("短信验证码登录未开启")
+	}
 	if err := s.smsService.VerifyCode(ctx, req.Phone, "login", req.Code); err != nil {
 		return nil, err
 	}
@@ -193,6 +215,8 @@ func (s *AuthService) issueLoginResp(ctx context.Context, user entities.User) (*
 		Token: pair,
 		User:  mapper.ToUserResp(user),
 	}
+	resp.User.AvatarURL = mapper.ResolveStoredFileURL(resp.User.AvatarURL, s.fileService.BuildDownloadURL)
+	resp.User.OperationIDs = accesssvc.BuildUserOperationIDs(user.Roles, s.casbin)
 	return resp, nil
 }
 

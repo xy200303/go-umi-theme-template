@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -9,8 +10,16 @@ import (
 	"backend/internal/api/controllers"
 	"backend/internal/api/middleware"
 	"backend/internal/pkg/config"
-	"backend/internal/repository"
-	"backend/internal/service"
+	authrepo "backend/internal/repository/auth"
+	filerepo "backend/internal/repository/file"
+	rolerepo "backend/internal/repository/role"
+	systemrepo "backend/internal/repository/system"
+	userrepo "backend/internal/repository/user"
+	accesssvc "backend/internal/service/access"
+	adminsvc "backend/internal/service/admin"
+	authsvc "backend/internal/service/auth"
+	filesvc "backend/internal/service/file"
+	usersvc "backend/internal/service/user"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -23,34 +32,39 @@ type AppContext struct {
 	DB     *gorm.DB
 	Redis  *redis.Client
 
-	CasbinService  *service.CasbinService
-	AuthService    *service.AuthService
-	UserService    *service.UserService
-	AdminService   *service.AdminService
-	StorageService *service.StorageService
-	SMSService     *service.SMSService
+	CasbinService  *accesssvc.CasbinService
+	AuthService    *authsvc.AuthService
+	UserService    *usersvc.UserService
+	AdminService   *adminsvc.AdminService
+	FileService    *filesvc.FileService
+	SMSService     *authsvc.SMSService
 
 	AuthController  *controllers.AuthController
 	UserController  *controllers.UserController
 	AdminController *controllers.AdminController
+	FileController  *controllers.FileController
 }
 
 func NewAppContext(cfg *config.Config, db *gorm.DB, redis *redis.Client) (*AppContext, error) {
-	userRepo := repository.NewUserRepository(db)
-	roleRepo := repository.NewRoleRepository(db)
-	cfgRepo := repository.NewSystemConfigRepository(db)
-	refreshRepo := repository.NewRefreshTokenRepository(redis)
+	userRepo := userrepo.NewUserRepository(db)
+	fileRepo := filerepo.NewFileRepository(db)
+	roleRepo := rolerepo.NewRoleRepository(db)
+	cfgRepo := systemrepo.NewSystemConfigRepository(db)
+	auditRepo := systemrepo.NewAuditLogRepository(db)
+	refreshRepo := authrepo.NewRefreshTokenRepository(redis)
 
-	casbinService, err := service.NewCasbinService(db)
+	casbinService, err := accesssvc.NewCasbinService(db)
 	if err != nil {
 		return nil, err
 	}
 
-	smsService := service.NewSMSService(cfg, redis)
-	storageService := service.NewStorageService(cfg)
-	authService := service.NewAuthService(cfg, userRepo, roleRepo, refreshRepo, smsService)
-	userService := service.NewUserService(userRepo, smsService, storageService)
-	adminService := service.NewAdminService(userRepo, roleRepo, cfgRepo, casbinService, redis)
+	smsService := authsvc.NewSMSService(cfg, redis)
+	fileStorageService := filesvc.NewStorageService(cfg, cfgRepo)
+	fileService := filesvc.NewFileService(cfg, fileRepo, fileStorageService, cfgRepo)
+	authService := authsvc.NewAuthService(cfg, userRepo, roleRepo, refreshRepo, smsService, casbinService, fileService)
+	userService := usersvc.NewUserService(cfg, userRepo, smsService, casbinService, fileService)
+	adminService := adminsvc.NewAdminService(userRepo, fileRepo, roleRepo, cfgRepo, auditRepo, casbinService, redis, fileService)
+	fileService.StartCleanupWorker(context.Background())
 
 	ctx := &AppContext{
 		Config:         cfg,
@@ -60,13 +74,14 @@ func NewAppContext(cfg *config.Config, db *gorm.DB, redis *redis.Client) (*AppCo
 		AuthService:    authService,
 		UserService:    userService,
 		AdminService:   adminService,
-		StorageService: storageService,
+		FileService:    fileService,
 		SMSService:     smsService,
 	}
 
 	ctx.AuthController = controllers.NewAuthController(authService)
 	ctx.UserController = controllers.NewUserController(userService)
 	ctx.AdminController = controllers.NewAdminController(adminService)
+	ctx.FileController = controllers.NewFileController(fileService)
 
 	return ctx, nil
 }
@@ -88,8 +103,12 @@ func SetupRouter(app *AppContext) *gin.Engine {
 
 	api := r.Group("/api/v1")
 	{
+		api.GET("/files/:id/download", app.FileController.DownloadFile)
+
 		auth := api.Group("/auth")
+		auth.Use(middleware.AuditLogMiddleware(app.AdminService))
 		{
+			auth.GET("/options", app.AuthController.GetAuthOptions)
 			auth.POST("/sms/send", app.AuthController.SendSMSCode)
 			auth.POST("/register", app.AuthController.Register)
 			auth.POST("/login/password", app.AuthController.PasswordLogin)
@@ -99,7 +118,11 @@ func SetupRouter(app *AppContext) *gin.Engine {
 		}
 
 		secured := api.Group("")
-		secured.Use(middleware.AuthMiddleware(app.Config), middleware.RBACMiddleware(app.CasbinService))
+		secured.Use(
+			middleware.AuthMiddleware(app.Config),
+			middleware.AuditLogMiddleware(app.AdminService),
+			middleware.RBACMiddleware(app.CasbinService),
+		)
 		{
 			user := secured.Group("/user")
 			{
@@ -108,12 +131,17 @@ func SetupRouter(app *AppContext) *gin.Engine {
 				user.POST("/password/reset", app.UserController.ResetPassword)
 				user.POST("/phone/change", app.UserController.ChangePhone)
 				user.POST("/avatar/upload", app.UserController.UploadAvatar)
+				user.POST("/files/upload", app.FileController.UploadFile)
+				user.POST("/files/direct/init", app.FileController.InitDirectUpload)
+				user.POST("/files/direct/complete", app.FileController.CompleteDirectUpload)
 			}
 
 			admin := secured.Group("/admin")
-			admin.Use(middleware.RequireAdmin())
 			{
 				admin.GET("/stats", app.AdminController.Stats)
+				admin.GET("/files", app.AdminController.ListAdminFiles)
+				admin.GET("/files/stats", app.AdminController.GetAdminFileStats)
+				admin.GET("/audit-logs", app.AdminController.ListAuditLogs)
 				admin.GET("/policy-templates", app.AdminController.ListPolicyTemplates)
 				admin.GET("/users", app.AdminController.ListUsers)
 				admin.POST("/users", app.AdminController.CreateUser)

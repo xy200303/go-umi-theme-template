@@ -1,4 +1,4 @@
-package repository
+package userrepo
 
 import (
 	"backend/internal/models/entities"

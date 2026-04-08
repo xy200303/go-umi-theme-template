@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Button, Input, Segmented, Tag } from 'antd';
 import { useNavigate } from '@/lib/router';
 import { loginByPassword, loginBySms, sendSmsCode } from '@/api/endpoints/auth';
+import { useSmsVerifyEnabled } from '@/lib/auth-config';
 import { useAuthStore } from '@/stores';
 import { useI18n } from '@/i18n';
 import { notifyError, notifySuccess, notifyWarning } from '@/lib/notify';
@@ -15,6 +16,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { setLogin } = useAuthStore();
   const { t } = useI18n();
+  const smsVerifyEnabled = useSmsVerifyEnabled();
 
   const [mode, setMode] = useState<'pwd' | 'sms'>('pwd');
   const [loading, setLoading] = useState(false);
@@ -44,6 +46,10 @@ export default function LoginPage() {
 
   const submitSms = async (evt: FormEvent<HTMLFormElement>) => {
     evt.preventDefault();
+    if (!smsVerifyEnabled) {
+      notifyWarning(t('auth.smsLoginFailed'));
+      return;
+    }
     if (!smsForm.phone || !smsForm.code) {
       notifyWarning(t('auth.codeRequired'));
       return;
@@ -63,6 +69,9 @@ export default function LoginPage() {
   };
 
   const handleSendCode = async () => {
+    if (!smsVerifyEnabled) {
+      return;
+    }
     if (!smsForm.phone) {
       notifyWarning(t('auth.inputPhoneFirst'));
       return;
@@ -98,20 +107,22 @@ export default function LoginPage() {
             <h2 className="mb-1 text-2xl font-semibold text-sky-900">{t('auth.signIn')}</h2>
             <p className="mb-5 text-sm text-slate-500">{t('auth.signInSubtitle')}</p>
 
-            <div className="mb-6">
-              <Segmented
-                block
-                className="ant-surface-segmented"
-                options={[
-                  { label: t('auth.passwordLogin'), value: 'pwd' },
-                  { label: t('auth.smsLogin'), value: 'sms' }
-                ]}
-                value={mode}
-                onChange={(v) => setMode(v as 'pwd' | 'sms')}
-              />
-            </div>
+            {smsVerifyEnabled ? (
+              <div className="mb-6">
+                <Segmented
+                  block
+                  className="ant-surface-segmented"
+                  options={[
+                    { label: t('auth.passwordLogin'), value: 'pwd' },
+                    { label: t('auth.smsLogin'), value: 'sms' }
+                  ]}
+                  value={mode}
+                  onChange={(v) => setMode(v as 'pwd' | 'sms')}
+                />
+              </div>
+            ) : null}
 
-            {mode === 'pwd' ? (
+            {!smsVerifyEnabled || mode === 'pwd' ? (
               <form className="space-y-4" onSubmit={submitPassword}>
                 <div className="space-y-1.5">
                   <label className={labelCls}>{t('auth.account')}</label>

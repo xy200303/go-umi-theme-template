@@ -5,27 +5,27 @@ type UpdateUserRolesReq struct {
 }
 
 type CreateUserReq struct {
-	Username  string   `json:"username" binding:"required"`
-	Phone     string   `json:"phone" binding:"required"`
-	Password  string   `json:"password" binding:"required"`
-	Email     string   `json:"email"`
-	AvatarURL string   `json:"avatar_url"`
-	Signature string   `json:"signature"`
-	Gender    string   `json:"gender"`
-	Age       int      `json:"age"`
-	IsActive  bool     `json:"is_active"`
-	RoleNames []string `json:"role_names"`
+	Username     string   `json:"username" binding:"required"`
+	Phone        string   `json:"phone" binding:"required"`
+	Password     string   `json:"password" binding:"required"`
+	Email        string   `json:"email"`
+	AvatarFileID string   `json:"avatar_file_id"`
+	Signature    string   `json:"signature"`
+	Gender       string   `json:"gender"`
+	Age          int      `json:"age"`
+	IsActive     bool     `json:"is_active"`
+	RoleNames    []string `json:"role_names"`
 }
 
 type UpdateUserReq struct {
-	Username  string `json:"username" binding:"required"`
-	Phone     string `json:"phone" binding:"required"`
-	Email     string `json:"email"`
-	AvatarURL string `json:"avatar_url"`
-	Signature string `json:"signature"`
-	Gender    string `json:"gender"`
-	Age       int    `json:"age"`
-	IsActive  bool   `json:"is_active"`
+	Username     string `json:"username" binding:"required"`
+	Phone        string `json:"phone" binding:"required"`
+	Email        string `json:"email"`
+	AvatarFileID string `json:"avatar_file_id"`
+	Signature    string `json:"signature"`
+	Gender       string `json:"gender"`
+	Age          int    `json:"age"`
+	IsActive     bool   `json:"is_active"`
 }
 
 type ResetUserPasswordReq struct {
@@ -54,7 +54,22 @@ type SetRolePoliciesReq struct {
 
 type SystemConfigReq struct {
 	ConfigGroup string `json:"config_group" binding:"required"`
-	ConfigKey string `json:"config_key" binding:"required"`
-	ConfigVal string `json:"config_val" binding:"required"`
-	Remark    string `json:"remark"`
+	ConfigKey   string `json:"config_key" binding:"required"`
+	ConfigVal   string `json:"config_val" binding:"required"`
+	Remark      string `json:"remark"`
+}
+
+type ListAuditLogsReq struct {
+	Keyword    string `form:"keyword"`
+	MenuKey    string `form:"menu_key"`
+	StatusCode int    `form:"status_code"`
+	Page       int    `form:"page"`
+	PageSize   int    `form:"page_size"`
+}
+
+type ListAdminFilesReq struct {
+	Keyword      string `form:"keyword"`
+	UploadStatus string `form:"upload_status"`
+	Page         int    `form:"page"`
+	PageSize     int    `form:"page_size"`
 }

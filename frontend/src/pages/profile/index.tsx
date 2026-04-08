@@ -5,8 +5,10 @@ import type { UploadProps } from 'antd';
 import MainNavbar from '@/components/layout/MainNavbar';
 import SidebarLayout from '@/components/layout/SidebarLayout';
 import AppAvatar from '@/components/ui/AppAvatar';
-import { changePhone, getProfile, resetPassword, updateProfile, uploadAvatar } from '@/api/endpoints/user';
+import { uploadUserFile } from '@/api/endpoints/file';
+import { changePhone, getProfile, resetPassword, updateProfile } from '@/api/endpoints/user';
 import { sendSmsCode } from '@/api/endpoints/auth';
+import { useSmsVerifyEnabled } from '@/lib/auth-config';
 import { useAuthStore } from '@/stores';
 import { useI18n } from '@/i18n';
 import { notifyError, notifySuccess, notifyWarning } from '@/lib/notify';
@@ -15,6 +17,7 @@ import type { AuthUser } from '@/types/auth';
 type ProfileForm = {
   email: string;
   avatar_url: string;
+  avatar_file_id: string;
   signature: string;
   gender: string;
   age: number;
@@ -38,6 +41,7 @@ function createEmptyProfileForm(): ProfileForm {
   return {
     email: '',
     avatar_url: '',
+    avatar_file_id: '',
     signature: '',
     gender: 'unknown',
     age: 0
@@ -63,6 +67,7 @@ function mapUserToProfileForm(user: AuthUser): ProfileForm {
   return {
     email: user.email ?? '',
     avatar_url: user.avatar_url ?? '',
+    avatar_file_id: '',
     signature: user.signature ?? '',
     gender: user.gender ?? 'unknown',
     age: user.age ?? 0
@@ -72,6 +77,7 @@ function mapUserToProfileForm(user: AuthUser): ProfileForm {
 export default function ProfilePage() {
   const { user, updateUser } = useAuthStore();
   const { t } = useI18n();
+  const smsVerifyEnabled = useSmsVerifyEnabled();
   const [collapsed, setCollapsed] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
@@ -124,7 +130,13 @@ export default function ProfilePage() {
     evt.preventDefault();
     setProfileLoading(true);
     try {
-      const profile = await updateProfile(profileFormData);
+      const profile = await updateProfile({
+        email: profileFormData.email,
+        avatar_file_id: profileFormData.avatar_file_id || undefined,
+        signature: profileFormData.signature,
+        gender: profileFormData.gender,
+        age: profileFormData.age
+      });
       updateUser(profile);
       setProfileFormData(mapUserToProfileForm(profile));
       notifySuccess(t('profile.profileUpdated'));
@@ -154,7 +166,11 @@ export default function ProfilePage() {
   };
 
   const submitPhoneChange = async () => {
-    if (!phoneFormData.old_phone_code || !phoneFormData.new_phone || !phoneFormData.new_phone_code) {
+    const missingRequiredFields = smsVerifyEnabled
+      ? !phoneFormData.old_phone_code || !phoneFormData.new_phone || !phoneFormData.new_phone_code
+      : !phoneFormData.new_phone;
+
+    if (missingRequiredFields) {
       notifyWarning(t('profile.phoneFormIncomplete'));
       return;
     }
@@ -173,6 +189,9 @@ export default function ProfilePage() {
   };
 
   const sendCode = async (mode: 'old' | 'new') => {
+    if (!smsVerifyEnabled) {
+      return;
+    }
     try {
       setSmsLoading(mode);
       if (mode === 'old') {
@@ -213,6 +232,9 @@ export default function ProfilePage() {
 
   const openPhoneModal = () => {
     resetPhoneModalState();
+    if (!smsVerifyEnabled) {
+      setPhoneStep('new');
+    }
     setPhoneModalOpen(true);
   };
 
@@ -222,7 +244,7 @@ export default function ProfilePage() {
   };
 
   const onPhoneModalConfirm = async () => {
-    if (phoneStep === 'old') {
+    if (smsVerifyEnabled && phoneStep === 'old') {
       if (!phoneFormData.old_phone_code) {
         notifyWarning(t('profile.phoneFormIncomplete'));
         return;
@@ -246,11 +268,10 @@ export default function ProfilePage() {
 
       setAvatarUploading(true);
       try {
-        const avatar = await uploadAvatar(file);
-        updateUser({ avatar_url: avatar });
-        updateProfileFormData({ avatar_url: avatar });
+        const uploaded = await uploadUserFile(file);
+        updateProfileFormData({ avatar_url: uploaded.file_url, avatar_file_id: uploaded.id });
         notifySuccess(t('profile.avatarUploaded'));
-        onSuccess?.({ avatar_url: avatar });
+        onSuccess?.({ avatar_url: uploaded.file_url, avatar_file_id: uploaded.id });
       } catch (error) {
         notifyError(t('profile.uploadFailed'));
         onError?.(error instanceof Error ? error : new Error('Upload failed'));
@@ -421,12 +442,12 @@ export default function ProfilePage() {
         open={phoneModalOpen}
         onCancel={resetPhoneModalState}
         onOk={onPhoneModalConfirm}
-        okText={phoneStep === 'old' ? t('profile.nextStep') : t('profile.confirmChange')}
+        okText={smsVerifyEnabled && phoneStep === 'old' ? t('profile.nextStep') : t('profile.confirmChange')}
         cancelText={t('profile.cancel')}
-        confirmLoading={phoneStep === 'new' ? phoneLoading : false}
-        title={phoneStep === 'old' ? t('profile.verifyCurrentPhone') : t('profile.verifyNewPhone')}
+        confirmLoading={!smsVerifyEnabled || phoneStep === 'new' ? phoneLoading : false}
+        title={smsVerifyEnabled && phoneStep === 'old' ? t('profile.verifyCurrentPhone') : t('profile.verifyNewPhone')}
       >
-        {phoneStep === 'old' ? (
+        {smsVerifyEnabled && phoneStep === 'old' ? (
           <div className="space-y-4 pt-2">
             <p className="text-sm leading-6 text-slate-500">{t('profile.currentPhone', { phone: user?.phone ?? '-' })}</p>
             <label className="block">
@@ -460,25 +481,27 @@ export default function ProfilePage() {
                 onChange={(e) => updatePhoneFormData({ new_phone: e.target.value })}
               />
             </label>
-            <label className="block">
-              <span className={labelCls}>{t('profile.newPhoneCode')}</span>
-              <div className="flex items-center gap-2">
-                <Input
-                  className="ant-surface-input"
-                  placeholder={t('profile.newPhoneCodePlaceholder')}
-                  value={phoneFormData.new_phone_code}
-                  onChange={(e) => updatePhoneFormData({ new_phone_code: e.target.value })}
-                />
-                <Button
-                  className="ant-surface-btn-outline !h-11 !w-[120px] !shrink-0"
-                  loading={smsLoading === 'new'}
-                  onClick={() => sendCode('new')}
-                  type="default"
-                >
-                  {t('profile.sendCode')}
-                </Button>
-              </div>
-            </label>
+            {smsVerifyEnabled ? (
+              <label className="block">
+                <span className={labelCls}>{t('profile.newPhoneCode')}</span>
+                <div className="flex items-center gap-2">
+                  <Input
+                    className="ant-surface-input"
+                    placeholder={t('profile.newPhoneCodePlaceholder')}
+                    value={phoneFormData.new_phone_code}
+                    onChange={(e) => updatePhoneFormData({ new_phone_code: e.target.value })}
+                  />
+                  <Button
+                    className="ant-surface-btn-outline !h-11 !w-[120px] !shrink-0"
+                    loading={smsLoading === 'new'}
+                    onClick={() => sendCode('new')}
+                    type="default"
+                  >
+                    {t('profile.sendCode')}
+                  </Button>
+                </div>
+              </label>
+            ) : null}
           </div>
         )}
       </Modal>

@@ -3,7 +3,7 @@ import type { ApiEnvelope, AuthUser } from '@/types/auth';
 
 export interface UpdateProfileReq {
   email: string;
-  avatar_url: string;
+  avatar_file_id?: string;
   signature: string;
   gender: string;
   age: number;
@@ -38,11 +38,3 @@ export async function changePhone(payload: ChangePhoneReq): Promise<void> {
   await http.post('/user/phone/change', payload);
 }
 
-export async function uploadAvatar(file: File): Promise<string> {
-  const formData = new FormData();
-  formData.append('file', file);
-  const { data } = await http.post<ApiEnvelope<{ avatar_url: string }>>('/user/avatar/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  });
-  return data.data.avatar_url;
-}

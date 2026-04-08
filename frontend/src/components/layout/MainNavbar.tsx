@@ -1,16 +1,19 @@
 import { Dropdown } from 'antd';
 import { Link, useLocation, useNavigate } from '@/lib/router';
+import { getFirstAccessibleAdminPath, hasAccess } from '@/lib/access';
 import { useAuthStore } from '@/stores';
 import { logout } from '@/api/endpoints/auth';
-import { adminRoutePaths, routePaths } from '@/constants/routes';
+import { routePaths } from '@/constants/routes';
 import { useI18n, type Locale } from '@/i18n';
 import AppAvatar from '@/components/ui/AppAvatar';
 
 export default function MainNavbar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, token, clearLogin, isAdmin } = useAuthStore();
+  const { user, token, clearLogin } = useAuthStore();
   const { locale, setLocale, t } = useI18n();
+  const canAccessProfile = hasAccess(user, 'profile');
+  const adminEntryPath = getFirstAccessibleAdminPath(user);
 
   const onLogout = async () => {
     try {
@@ -79,17 +82,21 @@ export default function MainNavbar() {
             trigger={['click']}
             menu={{
               items: [
-                {
-                  key: 'profile',
-                  label: t('nav.profile'),
-                  onClick: () => navigate(routePaths.profile)
-                },
-                ...(isAdmin()
+                ...(canAccessProfile
+                  ? [
+                      {
+                        key: 'profile',
+                        label: t('nav.profile'),
+                        onClick: () => navigate(routePaths.profile)
+                      }
+                    ]
+                  : []),
+                ...(adminEntryPath
                   ? [
                       {
                         key: 'admin',
                         label: t('nav.admin'),
-                        onClick: () => navigate(adminRoutePaths.home)
+                        onClick: () => navigate(adminEntryPath)
                       }
                     ]
                   : []),

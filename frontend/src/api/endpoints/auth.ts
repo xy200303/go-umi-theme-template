@@ -23,6 +23,15 @@ export interface SmsLoginReq {
   code: string;
 }
 
+export interface AuthOptions {
+  sms_verify_enabled: boolean;
+}
+
+export async function getAuthOptions(): Promise<AuthOptions> {
+  const { data } = await http.get<ApiEnvelope<AuthOptions>>('/auth/options');
+  return data.data;
+}
+
 export async function sendSmsCode(payload: SendSmsReq): Promise<void> {
   await http.post<ApiEnvelope<{ sent: boolean }>>('/auth/sms/send', payload);
 }

@@ -9,6 +9,7 @@ export interface AuthUser {
   age?: number;
   is_active?: boolean;
   roles: string[];
+  operation_ids?: string[];
   created_at?: string;
   updated_at?: string;
 }

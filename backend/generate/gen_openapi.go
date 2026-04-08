@@ -50,8 +50,10 @@ type operationItem struct {
 }
 
 var menuLabels = map[string]string{
+	"audits":    "日志审计",
 	"configs":   "系统配置",
 	"dashboard": "仪表盘",
+	"files":     "文件中心",
 	"profile":   "个人中心",
 	"roles":     "角色管理",
 	"users":     "用户管理",

@@ -6,15 +6,15 @@ import (
 	"backend/internal/api/middleware"
 	"backend/internal/models/dto/requests"
 	"backend/internal/pkg/utils"
-	"backend/internal/service"
+	usersvc "backend/internal/service/user"
 	"github.com/gin-gonic/gin"
 )
 
 type UserController struct {
-	userService *service.UserService
+	userService *usersvc.UserService
 }
 
-func NewUserController(userService *service.UserService) *UserController {
+func NewUserController(userService *usersvc.UserService) *UserController {
 	return &UserController{userService: userService}
 }
 
@@ -111,12 +111,8 @@ func (ctl *UserController) ChangePhone(c *gin.Context) {
 	utils.Success(c, gin.H{"ok": true})
 }
 
-// UploadAvatar godoc
-// @Summary 上传头像
-// @Description 允许上传并更新当前登录用户头像
-// @Tags profile
-// @ID profile.avatar
-// @Router /api/v1/user/avatar/upload [post]
+// UploadAvatar remains as a compatibility endpoint for older clients.
+// New frontend flows should use /api/v1/user/files/upload + /api/v1/user/profile instead.
 func (ctl *UserController) UploadAvatar(c *gin.Context) {
 	claims, ok := middleware.GetClaims(c)
 	if !ok {

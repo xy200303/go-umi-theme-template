@@ -7,15 +7,15 @@ import (
 	"backend/internal/api/middleware"
 	"backend/internal/models/dto/requests"
 	"backend/internal/pkg/utils"
-	"backend/internal/service"
+	adminsvc "backend/internal/service/admin"
 	"github.com/gin-gonic/gin"
 )
 
 type AdminController struct {
-	adminService *service.AdminService
+	adminService *adminsvc.AdminService
 }
 
-func NewAdminController(adminService *service.AdminService) *AdminController {
+func NewAdminController(adminService *adminsvc.AdminService) *AdminController {
 	return &AdminController{adminService: adminService}
 }
 
@@ -36,6 +36,66 @@ func (ctl *AdminController) Stats(c *gin.Context) {
 
 func (ctl *AdminController) ListPolicyTemplates(c *gin.Context) {
 	utils.Success(c, ctl.adminService.ListPolicyTemplates())
+}
+
+// ListAdminFiles godoc
+// @Summary 查看文件列表
+// @Description 允许分页查看后台文件上传记录并按条件筛选
+// @Tags files
+// @ID files.admin.list
+// @Router /api/v1/admin/files [get]
+func (ctl *AdminController) ListAdminFiles(c *gin.Context) {
+	var req requests.ListAdminFilesReq
+	if err := c.ShouldBindQuery(&req); err != nil {
+		utils.Fail(c, http.StatusBadRequest, "invalid request")
+		return
+	}
+	resp, err := ctl.adminService.ListAdminFiles(req)
+	if err != nil {
+		utils.Fail(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	utils.Success(c, resp)
+}
+
+// GetAdminFileStats godoc
+// @Summary 查看文件统计
+// @Description 允许查看后台文件上传状态统计数据
+// @Tags files
+// @ID files.admin.stats
+// @Router /api/v1/admin/files/stats [get]
+func (ctl *AdminController) GetAdminFileStats(c *gin.Context) {
+	var req requests.ListAdminFilesReq
+	if err := c.ShouldBindQuery(&req); err != nil {
+		utils.Fail(c, http.StatusBadRequest, "invalid request")
+		return
+	}
+	resp, err := ctl.adminService.GetAdminFileStats(req)
+	if err != nil {
+		utils.Fail(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	utils.Success(c, resp)
+}
+
+// ListAuditLogs godoc
+// @Summary 查看日志审计
+// @Description 允许分页查看用户接口操作审计日志
+// @Tags audits
+// @ID audits.list
+// @Router /api/v1/admin/audit-logs [get]
+func (ctl *AdminController) ListAuditLogs(c *gin.Context) {
+	var req requests.ListAuditLogsReq
+	if err := c.ShouldBindQuery(&req); err != nil {
+		utils.Fail(c, http.StatusBadRequest, "invalid request")
+		return
+	}
+	resp, err := ctl.adminService.ListAuditLogs(req)
+	if err != nil {
+		utils.Fail(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	utils.Success(c, resp)
 }
 
 // ListUsers godoc

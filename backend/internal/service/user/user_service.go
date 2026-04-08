@@ -1,4 +1,4 @@
-package service
+package usersvc
 
 import (
 	"context"
@@ -9,20 +9,38 @@ import (
 	"backend/internal/models/dto/requests"
 	"backend/internal/models/dto/response"
 	"backend/internal/models/mapper"
+	"backend/internal/pkg/config"
 	"backend/internal/pkg/utils"
-	"backend/internal/repository"
+	userrepo "backend/internal/repository/user"
+	accesssvc "backend/internal/service/access"
+	authsvc "backend/internal/service/auth"
+	filesvc "backend/internal/service/file"
 
 	"gorm.io/gorm"
 )
 
 type UserService struct {
-	userRepo       *repository.UserRepository
-	smsService     *SMSService
-	storageService *StorageService
+	cfg            *config.Config
+	userRepo       *userrepo.UserRepository
+	smsService     *authsvc.SMSService
+	casbin         *accesssvc.CasbinService
+	fileService    *filesvc.FileService
 }
 
-func NewUserService(userRepo *repository.UserRepository, smsService *SMSService, storageService *StorageService) *UserService {
-	return &UserService{userRepo: userRepo, smsService: smsService, storageService: storageService}
+func NewUserService(
+	cfg *config.Config,
+	userRepo *userrepo.UserRepository,
+	smsService *authsvc.SMSService,
+	casbin *accesssvc.CasbinService,
+	fileService *filesvc.FileService,
+) *UserService {
+	return &UserService{
+		cfg:            cfg,
+		userRepo:       userRepo,
+		smsService:     smsService,
+		casbin:         casbin,
+		fileService:    fileService,
+	}
 }
 
 func (s *UserService) GetProfile(userID uint) (*response.UserResp, error) {
@@ -31,6 +49,8 @@ func (s *UserService) GetProfile(userID uint) (*response.UserResp, error) {
 		return nil, fmt.Errorf("user not found")
 	}
 	resp := mapper.ToUserResp(*user)
+	resp.AvatarURL = mapper.ResolveStoredFileURL(resp.AvatarURL, s.fileService.BuildDownloadURL)
+	resp.OperationIDs = accesssvc.BuildUserOperationIDs(user.Roles, s.casbin)
 	return &resp, nil
 }
 
@@ -51,8 +71,17 @@ func (s *UserService) UpdateProfile(userID uint, req requests.UpdateProfileReq) 
 	}
 
 	user.Email = email
-	if strings.TrimSpace(req.AvatarURL) != "" {
-		user.AvatarURL = strings.TrimSpace(req.AvatarURL)
+	if avatarFileID := strings.TrimSpace(req.AvatarFileID); avatarFileID != "" {
+		if s.fileService == nil {
+			return nil, fmt.Errorf("file service unavailable")
+		}
+		if _, err := s.fileService.RequireFileOwnedBy(avatarFileID, userID); err != nil {
+			return nil, err
+		}
+		if err := s.fileService.BindFile(avatarFileID); err != nil {
+			return nil, err
+		}
+		user.AvatarURL = avatarFileID
 	}
 	user.Signature = strings.TrimSpace(req.Signature)
 	user.Gender = strings.TrimSpace(req.Gender)
@@ -63,6 +92,8 @@ func (s *UserService) UpdateProfile(userID uint, req requests.UpdateProfileReq) 
 	}
 
 	resp := mapper.ToUserResp(*user)
+	resp.AvatarURL = mapper.ResolveStoredFileURL(resp.AvatarURL, s.fileService.BuildDownloadURL)
+	resp.OperationIDs = accesssvc.BuildUserOperationIDs(user.Roles, s.casbin)
 	return &resp, nil
 }
 
@@ -93,11 +124,13 @@ func (s *UserService) ChangePhone(ctx context.Context, userID uint, req requests
 		return fmt.Errorf("user not found")
 	}
 
-	if err := s.smsService.VerifyCode(ctx, user.Phone, "change_phone_old", req.OldPhoneCode); err != nil {
-		return fmt.Errorf("old phone verification failed: %w", err)
-	}
-	if err := s.smsService.VerifyCode(ctx, req.NewPhone, "change_phone_new", req.NewPhoneCode); err != nil {
-		return fmt.Errorf("new phone verification failed: %w", err)
+	if s.cfg.SMSVerifyEnabled {
+		if err := s.smsService.VerifyCode(ctx, user.Phone, "change_phone_old", req.OldPhoneCode); err != nil {
+			return fmt.Errorf("old phone verification failed: %w", err)
+		}
+		if err := s.smsService.VerifyCode(ctx, req.NewPhone, "change_phone_new", req.NewPhoneCode); err != nil {
+			return fmt.Errorf("new phone verification failed: %w", err)
+		}
 	}
 
 	newPhone := strings.TrimSpace(req.NewPhone)
@@ -113,17 +146,27 @@ func (s *UserService) ChangePhone(ctx context.Context, userID uint, req requests
 }
 
 func (s *UserService) UploadAvatar(userID uint, fileHeader *multipart.FileHeader) (string, error) {
-	url, err := s.storageService.Upload(fileHeader)
+	if s.fileService == nil {
+		return "", fmt.Errorf("file service unavailable")
+	}
+
+	item, err := s.fileService.UploadMultipartFile(fileHeader, filesvc.UploadFileOptions{
+		UserID:   userID,
+	})
 	if err != nil {
 		return "", err
 	}
+	if err := s.fileService.BindFile(item.ID); err != nil {
+		return "", err
+	}
+
 	user, err := s.userRepo.FindByID(userID)
 	if err != nil {
 		return "", fmt.Errorf("user not found")
 	}
-	user.AvatarURL = url
+	user.AvatarURL = item.ID
 	if err := s.userRepo.Update(user); err != nil {
 		return "", err
 	}
-	return url, nil
+	return mapper.ResolveStoredFileURL(item.ID, s.fileService.BuildDownloadURL), nil
 }
