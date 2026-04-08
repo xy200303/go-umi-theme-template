@@ -1,7 +1,6 @@
 # 企业级网站模板
 
-基于 `Gin + React + Casbin + JWT + PostgreSQL + Redis` 的企业级项目模板，内置认证、权限、配置管理、短信验证码与文件上传能力。
-
+基于 `Gin + Umi 4 + React + Casbin + JWT + PostgreSQL + Redis` 的企业级全栈模板，内置认证、RBAC 权限、系统配置、日志审计和统一文件中心，适合作为后台管理系统或企业门户的二开基础。
 
 <img width="2490" height="1477" alt="image" src="https://github.com/user-attachments/assets/d9ce0569-e061-4a8c-a632-cd8f56e2ff5c" />
 
@@ -11,76 +10,114 @@
 
 <img width="2467" height="1472" alt="image" src="https://github.com/user-attachments/assets/1b2e618e-9309-4601-b4f8-e756483ad06e" />
 
-
-
 ## 功能特性
 
-- 用户注册与登录：支持密码登录与短信验证码登录
-- Token 体系：内置 Access Token + Refresh Token 会话流转
-- 个人中心：支持资料维护、头像上传、密码重置、手机号换绑
-- 管理后台：提供用户、角色、策略、系统配置管理
-- 策略模板：从控制器 OpenAPI 风格注释生成 `openapi.json`
-- 文件上传：优先腾讯云 COS，未配置时自动回退本地存储
-- 前端国际化：内置 `zh-CN` / `en-US`
+- 认证体系：支持密码登录、短信验证码登录、注册后自动登录、Access Token / Refresh Token 刷新
+- 前端权限控制：根据当前用户权限动态渲染导航栏、后台菜单和页面入口
+- 个人中心：支持资料维护、头像上传、密码修改、手机号换绑
+- 系统管理：提供用户、角色、系统配置、文件管理、日志审计等后台能力
+- 角色策略：从控制器注释生成 `openapi.json`，前端基于 `operationId` 进行策略勾选与展示
+- 日志审计：通过中间件记录用户接口操作，支持按关键词、模块、状态码筛选
+- 文件中心：统一文件上传、直传初始化、直传完成、签名下载；支持本地存储和腾讯云 COS
+- 国际化：内置 `zh-CN` / `en-US`
+- 前端工程：基于 Umi 4 目录式页面结构，使用 Tailwind CSS v4、Ant Design 和 Zustand
 
 ## 技术栈
 
 - 后端：Go、Gin、Gorm、Casbin、Redis、PostgreSQL
-- 前端：Umi.js、React、TypeScript、Bun、Ant Design、Tailwind CSS
+- 前端：Umi 4、React 19、TypeScript、Ant Design、Tailwind CSS v4、Zustand、Axios
+- 构建工具：Bun
 - 云服务：Tencent SMS、Tencent COS
 
 ## 项目结构
 
 ```text
 backend/
-  cmd/server              # Go 服务入口
-  configs/                # Casbin 等运行时配置
-  generate/               # policy openapi 生成器与嵌入资源
-  internal/               # controllers、services、repositories、models
-  uploads/                # 本地上传目录
-  web/                    # 前端构建产物
+  cmd/server                    # Go 服务入口
+  configs/                      # Casbin 配置等
+  generate/                     # OpenAPI 权限模板生成器与嵌入资源
+  internal/
+    api/                        # controller、middleware、routes
+    models/
+      dto/                      # 请求/响应 DTO
+      entities/                 # Gorm 实体
+      mapper/                   # 模型映射
+    pkg/                        # config、database、cache、utils
+    repository/                 # 按业务拆分的数据访问层
+    service/                    # 认证、权限、用户、文件、后台业务
+  web/                          # 前端构建产物
 
 frontend/
   src/
-    api/
-    components/
-    i18n/
-    pages/
+    api/                        # 接口封装
+    components/                 # 通用组件
+    constants/                  # 路由与常量
+    i18n/                       # 国际化
+    lib/                        # 工具函数
+    pages/                      # Umi 目录式页面
+      admin/
+        home/
+        system/
+          audit/
+          config/
+          files/
+          role/
+          users/
 ```
+
+## 主要页面
+
+- `/`：首页
+- `/about`：关于页
+- `/blog`：资讯页
+- `/login`：登录页
+- `/register`：注册页
+- `/profile`：个人中心
+- `/admin/home`：后台首页
+- `/admin/system/users`：用户管理
+- `/admin/system/role`：角色管理
+- `/admin/system/config`：系统配置
+- `/admin/system/files`：文件管理
+- `/admin/system/audit`：日志审计
 
 ## 快速开始
 
 ### 方式一：本地开发
 
-1. 启动依赖服务
-
-如果只想在本地运行后端和前端开发环境，可以只启动数据库与缓存：
+1. 启动 PostgreSQL 和 Redis
 
 ```bash
 docker compose up -d postgres redis
 ```
 
-当前仓库默认将容器端口映射到宿主机：
+默认端口映射：
 
-- PostgreSQL: `127.0.0.1:5433`
-- Redis: `127.0.0.1:6380`
+- PostgreSQL：`127.0.0.1:5433`
+- Redis：`127.0.0.1:6380`
 
 2. 配置后端环境变量
 
-复制 `backend/.env.example` 为 `backend/.env`，并按本地开发环境修改：
+复制 `backend/.env.example` 为 `backend/.env`：
+
+```bash
+cd backend
+copy .env.example .env
+```
+
+本地开发常见配置示例：
 
 ```env
+SERVER_PORT=8080
+SERVER_MODE=debug
+FRONTEND_DIST_DIR=web
+SMS_VERIFY_ENABLED=false
+
 POSTGRES_DSN=postgres://postgres:postgres@127.0.0.1:5433/enterprise_web?sslmode=disable&TimeZone=Asia/Shanghai
 REDIS_ADDR=127.0.0.1:6380
+
 JWT_ACCESS_SECRET=replace-with-access-secret
 JWT_REFRESH_SECRET=replace-with-refresh-secret
 ```
-
-说明：
-
-- 代码同时兼容 `POSTGRES_DSN` 与 `POSTGRES_URL`
-- 如果启用短信登录，需要补齐腾讯云短信配置
-- 如果使用你自己本机安装的 PostgreSQL / Redis，而不是仓库自带的 Compose 服务，可继续使用 `5432` / `6379`
 
 3. 启动后端
 
@@ -89,9 +126,9 @@ cd backend
 go run ./cmd/server
 ```
 
-默认监听：`http://127.0.0.1:8080`
+默认地址：`http://127.0.0.1:8080`
 
-4. 启动前端开发服务器
+4. 启动前端
 
 ```bash
 cd frontend
@@ -99,13 +136,11 @@ bun install
 bun run dev
 ```
 
-默认前端开发地址：`http://127.0.0.1:5173`
+默认地址：`http://127.0.0.1:5173`
 
-Umi 已配置 `/api` 代理到 `http://127.0.0.1:8080`，并将构建产物输出到 `backend/web`。
+开发环境中，Umi 已将 `/api` 代理到 `http://127.0.0.1:8080`。
 
-### 方式二：Docker Compose 整体部署
-
-仓库根目录已提供多阶段构建的 `Dockerfile` 与 `docker-compose.yml`，可直接启动完整应用栈：
+### 方式二：Docker Compose 一键启动
 
 ```bash
 docker compose up -d --build
@@ -113,18 +148,13 @@ docker compose up -d --build
 
 默认会启动：
 
-- `app`：Go 后端 + 已构建前端静态资源，暴露 `8080`
+- `app`：Go 服务 + 前端静态资源，端口 `8080`
 - `postgres`：PostgreSQL 16，宿主机端口 `5433`
 - `redis`：Redis 7，宿主机端口 `6380`
 
-应用启动后可通过 `http://127.0.0.1:8080` 访问。
+启动完成后访问：
 
-`app` 服务使用容器内地址连接依赖，例如：
-
-- `POSTGRES_DSN=...@postgres:5432/...`
-- `REDIS_ADDR=redis:6379`
-
-如果需要自定义生产环境变量，可参考 `docker-compose-example.yml`。
+- 应用地址：`http://127.0.0.1:8080`
 
 ## 前端构建
 
@@ -133,7 +163,7 @@ cd frontend
 bun run build
 ```
 
-构建产物默认输出到 `backend/web`，Go 服务已内置静态资源挂载与 SPA 回退逻辑。
+构建产物默认输出到 `backend/web`，Go 后端会直接托管静态资源并处理 SPA 回退。
 
 ## 环境变量
 
@@ -146,31 +176,41 @@ bun run build
 - `FRONTEND_DIST_DIR`：前端构建目录
 - `POSTGRES_DSN`：PostgreSQL 连接串
 - `REDIS_ADDR`：Redis 地址
-- `JWT_ACCESS_SECRET`：Access Token 密钥
-- `JWT_REFRESH_SECRET`：Refresh Token 密钥
+- `REDIS_PASSWORD`
+- `REDIS_DB`
+- `JWT_ACCESS_SECRET`
+- `JWT_REFRESH_SECRET`
+- `JWT_ACCESS_EXPIRE_MIN`
+- `JWT_REFRESH_EXPIRE_DAY`
 
 ### 短信配置
 
-- `SMS_VERIFY_ENABLED`：是否启用短信验证码校验
+- `SMS_VERIFY_ENABLED`：是否启用短信验证码能力
 - `TENCENT_SMS_SECRET_ID`
 - `TENCENT_SMS_SECRET_KEY`
 - `TENCENT_SMS_SDK_APP_ID`
 - `TENCENT_SMS_SIGN_NAME`
 - `TENCENT_SMS_TEMPLATE_ID`
-- `TENCENT_SMS_REGION`：默认 `ap-guangzhou`
+- `TENCENT_SMS_REGION`
 
-当前代码默认向短信模板传入 1 个模板参数，即验证码本身，因此腾讯云审核通过的模板内容需要与此保持一致。
+当前前端会通过 `GET /api/v1/auth/options` 获取短信开关状态，并据此动态显示验证码登录、注册验证码和换绑手机号验证码步骤。
 
 ### 上传配置
 
 - `UPLOAD_DRIVER`：`auto` / `local` / `cos`
 - `UPLOAD_LOCAL_PATH`：本地上传目录
-- `UPLOAD_MAX_SIZE_MB`：上传大小限制
-- `UPLOAD_ALLOWED_SUFFIX`：允许上传的扩展名列表
+- `UPLOAD_MAX_SIZE_MB`
+- `UPLOAD_ALLOWED_SUFFIX`
 - `TENCENT_COS_SECRET_ID`
 - `TENCENT_COS_SECRET_KEY`
 - `TENCENT_COS_BUCKET_URL`
 - `TENCENT_COS_BASE_URL`
+
+说明：
+
+- 本地模式下文件由服务端接收并存储
+- COS 模式下支持直传初始化和完成回写
+- 文件下载统一走签名下载接口
 
 ### 初始管理员
 
@@ -178,11 +218,15 @@ bun run build
 - `INIT_ADMIN_PHONE`
 - `INIT_ADMIN_PASSWORD`
 
-## 策略模板生成
+## 系统配置约定
 
-管理后台策略模板不是手写维护，而是从控制器方法注释生成。
+当前内置的重要系统配置包括：
 
-示例：
+- `audit.max_records`：日志审计最大保留条数，默认限制为 `10000`
+
+## 权限模板生成
+
+角色策略模板不是手工维护，而是由控制器注释自动生成：
 
 ```go
 // ListUsers godoc
@@ -201,18 +245,19 @@ cd backend
 go generate ./generate
 ```
 
-生成结果写入：
+生成结果：
 
 ```text
 backend/generate/openapi.json
 ```
 
-运行时由 `backend/generate/registry.go` 读取并转换后，通过管理后台接口返回给前端。
+运行时会由后端读取 `operationId` 列表，并在后台角色管理中按分组展示策略项。
 
 ## API 概览
 
 ### Auth
 
+- `GET /api/v1/auth/options`
 - `POST /api/v1/auth/sms/send`
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login/password`
@@ -227,10 +272,20 @@ backend/generate/openapi.json
 - `POST /api/v1/user/password/reset`
 - `POST /api/v1/user/phone/change`
 - `POST /api/v1/user/avatar/upload`
+- `POST /api/v1/user/files/upload`
+- `POST /api/v1/user/files/direct/init`
+- `POST /api/v1/user/files/direct/complete`
+
+### File Download
+
+- `GET /api/v1/files/:id/download`
 
 ### Admin
 
 - `GET /api/v1/admin/stats`
+- `GET /api/v1/admin/files`
+- `GET /api/v1/admin/files/stats`
+- `GET /api/v1/admin/audit-logs`
 - `GET /api/v1/admin/policy-templates`
 - `GET /api/v1/admin/users`
 - `POST /api/v1/admin/users`
@@ -256,7 +311,7 @@ make deps
 # 启动后端
 make backend
 
-# 启动前端开发服务器
+# 启动前端开发环境
 make frontend
 
 # 构建前后端
@@ -269,19 +324,29 @@ make clean
 ## 测试与构建
 
 ```bash
-# backend test
+# 后端测试
 cd backend
 go test ./...
 
-# policy template generate
+# 后端编译
+cd backend
+go build ./...
+
+# 重新生成权限模板
 cd backend
 go generate ./generate
 
-# frontend type check
+# 前端类型检查
 cd frontend
 bun run typecheck
 
-# frontend build
+# 前端构建
 cd frontend
 bun run build
 ```
+
+## 说明
+
+- 当前前端为 Umi 4 + React 的 CSR 应用，构建后由 Go 后端静态托管
+- 后台菜单和前端导航会根据当前用户权限动态渲染
+- 如果启用短信验证，注册、短信登录和手机号换绑会自动切换为验证码流程
