@@ -184,7 +184,7 @@ func (s *AdminService) CreateUser(req requests.CreateUserReq) (*response.UserRes
 	return &resp, nil
 }
 
-func (s *AdminService) UpdateUser(userID uint, req requests.UpdateUserReq) (*response.UserResp, error) {
+func (s *AdminService) UpdateUser(userID uint, actorUserID uint, req requests.UpdateUserReq) (*response.UserResp, error) {
 	user, err := s.userRepo.FindByID(userID)
 	if err != nil {
 		return nil, err
@@ -203,6 +203,9 @@ func (s *AdminService) UpdateUser(userID uint, req requests.UpdateUserReq) (*res
 
 	if strings.EqualFold(user.Username, reservedAdminUsername) && !strings.EqualFold(username, reservedAdminUsername) {
 		return nil, fmt.Errorf("reserved username admin cannot be changed")
+	}
+	if userID == actorUserID && !req.IsActive {
+		return nil, fmt.Errorf("cannot deactivate current user")
 	}
 
 	existingByUsername, err := s.userRepo.FindByUsername(username)
@@ -301,9 +304,28 @@ func (s *AdminService) DeleteUser(userID uint, actorUserID uint) error {
 		return fmt.Errorf("cannot delete current user")
 	}
 
-	if _, err := s.userRepo.FindByID(userID); err != nil {
+	targetUser, err := s.userRepo.FindByID(userID)
+	if err != nil {
 		return err
 	}
+
+	actorUser, err := s.userRepo.FindByID(actorUserID)
+	if err != nil {
+		return err
+	}
+
+	targetIsAdmin := false
+	for _, role := range targetUser.Roles {
+		if strings.EqualFold(role.Name, reservedAdminRoleName) {
+			targetIsAdmin = true
+			break
+		}
+	}
+
+	if targetIsAdmin && !strings.EqualFold(actorUser.Username, reservedAdminUsername) {
+		return fmt.Errorf("only super admin can delete admin users")
+	}
+
 	return s.userRepo.Delete(userID)
 }
 

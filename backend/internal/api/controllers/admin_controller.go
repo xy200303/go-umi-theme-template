@@ -145,12 +145,17 @@ func (ctl *AdminController) UpdateUser(c *gin.Context) {
 		utils.Fail(c, http.StatusBadRequest, "invalid user id")
 		return
 	}
+	claims, ok := middleware.GetClaims(c)
+	if !ok {
+		utils.Fail(c, http.StatusUnauthorized, "unauthorized")
+		return
+	}
 	var req requests.UpdateUserReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.Fail(c, http.StatusBadRequest, "invalid request")
 		return
 	}
-	resp, err := ctl.adminService.UpdateUser(uint(id), req)
+	resp, err := ctl.adminService.UpdateUser(uint(id), claims.UserID, req)
 	if err != nil {
 		utils.Fail(c, http.StatusBadRequest, err.Error())
 		return

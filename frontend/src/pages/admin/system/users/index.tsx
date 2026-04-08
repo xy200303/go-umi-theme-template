@@ -52,6 +52,19 @@ export default function AdminUsersPage() {
 
   const roleNames = useMemo(() => roles.map((role) => role.name), [roles]);
   const isReservedAdminUser = editingUser?.username === 'admin';
+  const isSuperAdmin = currentUser?.username === 'admin';
+  const isEditingCurrentUser = editingUser?.id === currentUser?.id;
+
+  const canDeleteUser = (user: AuthUser) => {
+    if (currentUser?.id === user.id) {
+      return false;
+    }
+    const isAdminUser = (user.roles ?? []).includes('admin');
+    if (isAdminUser && !isSuperAdmin) {
+      return false;
+    }
+    return true;
+  };
 
   const loadPageData = async (keyword = userKeyword.trim()) => {
     setLoading(true);
@@ -367,7 +380,7 @@ export default function AdminUsersPage() {
                       title={t('admin.deleteUserConfirm', { name: record.username })}
                       onConfirm={() => void onDeleteUser(record)}
                     >
-                      <Button danger disabled={currentUser?.id === record.id} type="default">
+                      <Button danger disabled={!canDeleteUser(record)} type="default">
                         {t('admin.deleteButton')}
                       </Button>
                     </Popconfirm>
@@ -504,6 +517,7 @@ export default function AdminUsersPage() {
             <Switch
               checked={userFormData.is_active}
               checkedChildren={t('admin.active')}
+              disabled={isEditingCurrentUser}
               unCheckedChildren={t('admin.inactive')}
               onChange={(checked) => updateUserFormData({ is_active: checked })}
             />
