@@ -3,6 +3,7 @@ import { Button, Input, Segmented, Tag } from 'antd';
 import { useNavigate } from '@/lib/router';
 import { loginByPassword, loginBySms, sendSmsCode } from '@/api/endpoints/auth';
 import { useSmsVerifyEnabled } from '@/lib/auth-config';
+import { notifyApiError } from '@/lib/api-error';
 import { useAuthStore } from '@/stores';
 import { useI18n } from '@/i18n';
 import { notifyError, notifySuccess, notifyWarning } from '@/lib/notify';
@@ -37,8 +38,8 @@ export default function LoginPage() {
       setLogin(resp.token, resp.user);
       notifySuccess(t('auth.loginSuccess'));
       navigate('/');
-    } catch {
-      notifyError(t('auth.loginFailed'));
+    } catch (error) {
+      notifyApiError(error, t('auth.loginFailed'));
     } finally {
       setLoading(false);
     }
@@ -61,8 +62,8 @@ export default function LoginPage() {
       setLogin(resp.token, resp.user);
       notifySuccess(t('auth.loginSuccess'));
       navigate('/');
-    } catch {
-      notifyError(t('auth.smsLoginFailed'));
+    } catch (error) {
+      notifyApiError(error, t('auth.smsLoginFailed'));
     } finally {
       setLoading(false);
     }
@@ -81,8 +82,8 @@ export default function LoginPage() {
     try {
       await sendSmsCode({ phone: smsForm.phone, scene: 'login' });
       notifySuccess(t('auth.codeSent'));
-    } catch {
-      notifyError(t('auth.codeSendFailed'));
+    } catch (error) {
+      notifyApiError(error, t('auth.codeSendFailed'));
     } finally {
       setSmsLoading(false);
     }

@@ -14,7 +14,7 @@ type ResetPasswordReq struct {
 }
 
 type ChangePhoneReq struct {
-	OldPhoneCode string `json:"old_phone_code" binding:"required"`
+	OldPhoneCode string `json:"old_phone_code"`
 	NewPhone     string `json:"new_phone" binding:"required"`
-	NewPhoneCode string `json:"new_phone_code" binding:"required"`
+	NewPhoneCode string `json:"new_phone_code"`
 }

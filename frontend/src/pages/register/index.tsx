@@ -3,6 +3,7 @@ import { Button, Input, Tag } from 'antd';
 import { useNavigate } from '@/lib/router';
 import { register, sendSmsCode } from '@/api/endpoints/auth';
 import { useSmsVerifyEnabled } from '@/lib/auth-config';
+import { notifyApiError } from '@/lib/api-error';
 import { useAuthStore } from '@/stores';
 import { useI18n } from '@/i18n';
 import { notifyError, notifySuccess, notifyWarning } from '@/lib/notify';
@@ -38,8 +39,8 @@ export default function RegisterPage() {
     try {
       await sendSmsCode({ phone: form.phone, scene: 'register' });
       notifySuccess(t('auth.codeSent'));
-    } catch {
-      notifyError(t('auth.codeSendFailed'));
+    } catch (error) {
+      notifyApiError(error, t('auth.codeSendFailed'));
     } finally {
       setSmsLoading(false);
     }
@@ -73,8 +74,8 @@ export default function RegisterPage() {
       setLogin(resp.token, resp.user);
       notifySuccess(t('auth.registerSuccess'));
       navigate('/');
-    } catch {
-      notifyError(t('auth.registerFailed'));
+    } catch (error) {
+      notifyApiError(error, t('auth.registerFailed'));
     } finally {
       setLoading(false);
     }

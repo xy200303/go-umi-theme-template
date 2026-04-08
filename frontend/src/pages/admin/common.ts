@@ -1,6 +1,9 @@
-import { isAxiosError } from 'axios';
 import type { RoleItem, RolePolicy, SystemConfigItem } from '@/api/endpoints/admin';
+import { extractApiErrorMessage } from '@/lib/api-error';
 import type { AuthUser } from '@/types/auth';
+
+export { extractApiErrorMessage } from '@/lib/api-error';
+export { notifyApiError } from '@/lib/api-error';
 
 export type UserFormValues = {
   username: string;
@@ -298,16 +301,6 @@ export function formatDurationMS(value?: number): string {
     return '-';
   }
   return `${value} ms`;
-}
-
-export function extractApiErrorMessage(error: unknown): string | null {
-  if (isAxiosError<{ message?: string }>(error)) {
-    return error.response?.data?.message ?? error.message ?? null;
-  }
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return null;
 }
 
 export function getPolicyMethodColor(method: string): string {

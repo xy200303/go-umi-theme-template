@@ -1,15 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Button, Input, Modal, Spin, Table } from 'antd';
 import AdminLayout from '../../layout';
-import {
-  createEmptyConfigFormValues,
-  extractApiErrorMessage,
-  formLabelClassName,
-  mapConfigToFormValues,
-  type ConfigFormValues
-} from '../../common';
+import { createEmptyConfigFormValues, formLabelClassName, mapConfigToFormValues, type ConfigFormValues } from '../../common';
 import { listSystemConfigs, upsertSystemConfig, type SystemConfigItem } from '@/api/endpoints/admin';
 import { useI18n } from '@/i18n';
+import { notifyApiError } from '@/lib/api-error';
 import { notifyError, notifySuccess } from '@/lib/notify';
 
 export default function AdminConfigsPage() {
@@ -25,8 +20,8 @@ export default function AdminConfigsPage() {
     setLoading(true);
     try {
       setConfigs(await listSystemConfigs());
-    } catch {
-      notifyError(t('admin.loadFailed'));
+    } catch (error) {
+      notifyApiError(error, t('admin.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -78,7 +73,7 @@ export default function AdminConfigsPage() {
       closeConfigModal();
       await loadConfigsData();
     } catch (error) {
-      notifyError(extractApiErrorMessage(error) ?? t('admin.configSaveFailed'));
+      notifyApiError(error, t('admin.configSaveFailed'));
     } finally {
       setConfigModalSubmitting(false);
     }

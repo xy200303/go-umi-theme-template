@@ -116,7 +116,11 @@ func (s *UserService) ResetPassword(userID uint, req requests.ResetPasswordReq) 
 }
 
 func (s *UserService) ChangePhone(ctx context.Context, userID uint, req requests.ChangePhoneReq) error {
-	if err := utils.ValidatePhone(req.NewPhone); err != nil {
+	newPhone := strings.TrimSpace(req.NewPhone)
+	oldPhoneCode := strings.TrimSpace(req.OldPhoneCode)
+	newPhoneCode := strings.TrimSpace(req.NewPhoneCode)
+
+	if err := utils.ValidatePhone(newPhone); err != nil {
 		return err
 	}
 	user, err := s.userRepo.FindByID(userID)
@@ -125,15 +129,20 @@ func (s *UserService) ChangePhone(ctx context.Context, userID uint, req requests
 	}
 
 	if s.cfg.SMSVerifyEnabled {
-		if err := s.smsService.VerifyCode(ctx, user.Phone, "change_phone_old", req.OldPhoneCode); err != nil {
+		if oldPhoneCode == "" {
+			return fmt.Errorf("old phone code is required")
+		}
+		if newPhoneCode == "" {
+			return fmt.Errorf("new phone code is required")
+		}
+		if err := s.smsService.VerifyCode(ctx, user.Phone, "change_phone_old", oldPhoneCode); err != nil {
 			return fmt.Errorf("old phone verification failed: %w", err)
 		}
-		if err := s.smsService.VerifyCode(ctx, req.NewPhone, "change_phone_new", req.NewPhoneCode); err != nil {
+		if err := s.smsService.VerifyCode(ctx, newPhone, "change_phone_new", newPhoneCode); err != nil {
 			return fmt.Errorf("new phone verification failed: %w", err)
 		}
 	}
 
-	newPhone := strings.TrimSpace(req.NewPhone)
 	existingByPhone, err := s.userRepo.FindByPhone(newPhone)
 	if err == nil && existingByPhone.ID != userID {
 		return fmt.Errorf("phone already exists")

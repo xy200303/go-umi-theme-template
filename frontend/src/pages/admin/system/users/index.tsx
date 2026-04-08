@@ -6,7 +6,6 @@ import AdminLayout from '../../layout';
 import {
   createEmptyPasswordFormValues,
   createEmptyUserFormValues,
-  extractApiErrorMessage,
   formLabelClassName,
   formatDateTime,
   mapUserToFormValues,
@@ -29,6 +28,7 @@ import {
 import AppAvatar from '@/components/ui/AppAvatar';
 import { uploadUserFile } from '@/api/endpoints/file';
 import { useI18n } from '@/i18n';
+import { notifyApiError } from '@/lib/api-error';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { useAuthStore } from '@/stores';
 import type { AuthUser } from '@/types/auth';
@@ -72,8 +72,8 @@ export default function AdminUsersPage() {
       const [userList, roleList] = await Promise.all([listUsers(keyword), listRoles()]);
       setUsers(userList);
       setRoles(roleList);
-    } catch {
-      notifyError(t('admin.loadFailed'));
+    } catch (error) {
+      notifyApiError(error, t('admin.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -191,7 +191,7 @@ export default function AdminUsersPage() {
       closeUserModal();
       await loadPageData(userKeyword.trim());
     } catch (error) {
-      notifyError(extractApiErrorMessage(error) ?? (editingUser ? t('admin.userUpdateFailed') : t('admin.userCreateFailed')));
+      notifyApiError(error, editingUser ? t('admin.userUpdateFailed') : t('admin.userCreateFailed'));
     } finally {
       setUserModalSubmitting(false);
     }
@@ -217,7 +217,7 @@ export default function AdminUsersPage() {
         notifySuccess(t('profile.avatarUploaded'));
         onSuccess?.({ avatar_url: uploaded.file_url, avatar_file_id: uploaded.id });
       } catch (error) {
-        notifyError(t('profile.uploadFailed'));
+        notifyApiError(error, t('profile.uploadFailed'));
         onError?.(error instanceof Error ? error : new Error('Upload failed'));
       } finally {
         setAvatarUploading(false);
@@ -248,7 +248,7 @@ export default function AdminUsersPage() {
       notifySuccess(t('admin.userPasswordResetSuccess'));
       closePasswordModal();
     } catch (error) {
-      notifyError(extractApiErrorMessage(error) ?? t('admin.userPasswordResetFailed'));
+      notifyApiError(error, t('admin.userPasswordResetFailed'));
     } finally {
       setPasswordModalSubmitting(false);
     }
@@ -260,7 +260,7 @@ export default function AdminUsersPage() {
       notifySuccess(t('admin.userDeleted'));
       await loadPageData(userKeyword.trim());
     } catch (error) {
-      notifyError(extractApiErrorMessage(error) ?? t('admin.userDeleteFailed'));
+      notifyApiError(error, t('admin.userDeleteFailed'));
     }
   };
 
@@ -279,7 +279,7 @@ export default function AdminUsersPage() {
       notifySuccess(t('admin.usersUpdated'));
       await loadPageData(userKeyword.trim());
     } catch (error) {
-      notifyError(extractApiErrorMessage(error) ?? t('admin.usersUpdateFailed'));
+      notifyApiError(error, t('admin.usersUpdateFailed'));
     }
   };
 

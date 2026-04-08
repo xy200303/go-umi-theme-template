@@ -4,7 +4,7 @@ import AdminLayout from '../layout';
 import { getStats, type SystemStats } from '@/api/endpoints/admin';
 import TechStatCard from '@/components/ui/TechStatCard';
 import { useI18n } from '@/i18n';
-import { notifyError } from '@/lib/notify';
+import { notifyApiError } from '@/lib/api-error';
 
 const initialStats: SystemStats = {
   user_count: 0,
@@ -23,8 +23,8 @@ export default function AdminHomePage() {
       setLoading(true);
       try {
         setStats(await getStats());
-      } catch {
-        notifyError(t('admin.loadFailed'));
+      } catch (error) {
+        notifyApiError(error, t('admin.loadFailed'));
       } finally {
         setLoading(false);
       }

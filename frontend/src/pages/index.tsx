@@ -4,6 +4,7 @@ import MainNavbar from '@/components/layout/MainNavbar';
 import TechStatCard from '@/components/ui/TechStatCard';
 import { getStats } from '@/api/endpoints/admin';
 import { hasAccess } from '@/lib/access';
+import { notifyApiError } from '@/lib/api-error';
 import { useAuthStore } from '@/stores';
 import { useI18n } from '@/i18n';
 import styles from './index.module.css';
@@ -28,10 +29,11 @@ export default function HomePage() {
           configs: res.system_config_count
         });
       })
-      .catch(() => {
+      .catch((error) => {
         setStats({ users: '-', roles: '-', configs: '-' });
+        notifyApiError(error, t('admin.loadFailed'));
       });
-  }, [canViewAdminStats]);
+  }, [canViewAdminStats, t]);
 
   return (
     <div className="app-shell p-3 pb-8">

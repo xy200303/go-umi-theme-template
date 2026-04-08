@@ -5,7 +5,6 @@ import {
   buildPoliciesFromSelection,
   buildSectionAggregatePolicies,
   createEmptyRoleFormValues,
-  extractApiErrorMessage,
   formLabelClassName,
   getPolicyTemplateScopeKey,
   getPolicyMethodColor,
@@ -31,6 +30,7 @@ import {
   type RolePolicy
 } from '@/api/endpoints/admin';
 import { useI18n } from '@/i18n';
+import { notifyApiError } from '@/lib/api-error';
 import { notifyError, notifySuccess } from '@/lib/notify';
 
 export default function AdminRolesPage() {
@@ -120,8 +120,8 @@ export default function AdminRolesPage() {
     setLoading(true);
     try {
       setRoles(await listRoles());
-    } catch {
-      notifyError(t('admin.loadFailed'));
+    } catch (error) {
+      notifyApiError(error, t('admin.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -134,7 +134,7 @@ export default function AdminRolesPage() {
   useEffect(() => {
     listPolicyTemplates()
       .then(setPolicyTemplateItems)
-      .catch(() => notifyError(t('admin.policyTemplateLoadFailed')));
+      .catch((error) => notifyApiError(error, t('admin.policyTemplateLoadFailed')));
   }, [t]);
 
   const updateRoleFormData = (patch: Partial<RoleFormValues>) => {
@@ -190,7 +190,7 @@ export default function AdminRolesPage() {
       closeRoleModal();
       await loadRolesData();
     } catch (error) {
-      notifyError(extractApiErrorMessage(error) ?? (editingRole ? t('admin.roleUpdateFailed') : t('admin.roleCreateFailed')));
+      notifyApiError(error, editingRole ? t('admin.roleUpdateFailed') : t('admin.roleCreateFailed'));
     } finally {
       setRoleModalSubmitting(false);
     }
@@ -202,7 +202,7 @@ export default function AdminRolesPage() {
       notifySuccess(t('admin.roleDeleted'));
       await loadRolesData();
     } catch (error) {
-      notifyError(extractApiErrorMessage(error) ?? t('admin.roleDeleteFailed'));
+      notifyApiError(error, t('admin.roleDeleteFailed'));
     }
   };
 
@@ -272,8 +272,8 @@ export default function AdminRolesPage() {
       setUnmatchedPolicies(legacyPolicies);
       setPolicyRole(role);
       setPolicyModalOpen(true);
-    } catch {
-      notifyError(t('admin.policyLoadFailed'));
+    } catch (error) {
+      notifyApiError(error, t('admin.policyLoadFailed'));
     }
   };
 
@@ -290,7 +290,7 @@ export default function AdminRolesPage() {
       notifySuccess(t('admin.policySaved'));
       closePolicyModal();
     } catch (error) {
-      notifyError(extractApiErrorMessage(error) ?? t('admin.policySaveFailed'));
+      notifyApiError(error, t('admin.policySaveFailed'));
     }
   };
 

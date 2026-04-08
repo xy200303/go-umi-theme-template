@@ -9,6 +9,7 @@ import { uploadUserFile } from '@/api/endpoints/file';
 import { changePhone, getProfile, resetPassword, updateProfile } from '@/api/endpoints/user';
 import { sendSmsCode } from '@/api/endpoints/auth';
 import { useSmsVerifyEnabled } from '@/lib/auth-config';
+import { notifyApiError } from '@/lib/api-error';
 import { useAuthStore } from '@/stores';
 import { useI18n } from '@/i18n';
 import { notifyError, notifySuccess, notifyWarning } from '@/lib/notify';
@@ -123,7 +124,7 @@ export default function ProfilePage() {
         updateUser(profile);
         setProfileFormData(mapUserToProfileForm(profile));
       })
-      .catch(() => notifyError(t('profile.loadFailed')));
+      .catch((error) => notifyApiError(error, t('profile.loadFailed')));
   }, [t, updateUser]);
 
   const submitProfile = async (evt: FormEvent<HTMLFormElement>) => {
@@ -140,8 +141,8 @@ export default function ProfilePage() {
       updateUser(profile);
       setProfileFormData(mapUserToProfileForm(profile));
       notifySuccess(t('profile.profileUpdated'));
-    } catch {
-      notifyError(t('profile.updateFailed'));
+    } catch (error) {
+      notifyApiError(error, t('profile.updateFailed'));
     } finally {
       setProfileLoading(false);
     }
@@ -158,8 +159,8 @@ export default function ProfilePage() {
       await resetPassword(passwordFormData);
       resetPasswordModalState();
       notifySuccess(t('profile.passwordResetSuccess'));
-    } catch {
-      notifyError(t('profile.passwordResetFailed'));
+    } catch (error) {
+      notifyApiError(error, t('profile.passwordResetFailed'));
     } finally {
       setPasswordLoading(false);
     }
@@ -181,8 +182,8 @@ export default function ProfilePage() {
       updateUser({ phone: phoneFormData.new_phone });
       resetPhoneModalState();
       notifySuccess(t('profile.phoneUpdated'));
-    } catch {
-      notifyError(t('profile.phoneUpdateFailed'));
+    } catch (error) {
+      notifyApiError(error, t('profile.phoneUpdateFailed'));
     } finally {
       setPhoneLoading(false);
     }
@@ -208,8 +209,8 @@ export default function ProfilePage() {
         await sendSmsCode({ phone: phoneFormData.new_phone, scene: 'change_phone_new' });
       }
       notifySuccess(t('auth.codeSent'));
-    } catch {
-      notifyError(t('profile.sendCodeFailed'));
+    } catch (error) {
+      notifyApiError(error, t('profile.sendCodeFailed'));
     } finally {
       setSmsLoading(null);
     }
@@ -273,7 +274,7 @@ export default function ProfilePage() {
         notifySuccess(t('profile.avatarUploaded'));
         onSuccess?.({ avatar_url: uploaded.file_url, avatar_file_id: uploaded.id });
       } catch (error) {
-        notifyError(t('profile.uploadFailed'));
+        notifyApiError(error, t('profile.uploadFailed'));
         onError?.(error instanceof Error ? error : new Error('Upload failed'));
       } finally {
         setAvatarUploading(false);

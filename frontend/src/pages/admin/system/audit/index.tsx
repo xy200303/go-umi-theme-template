@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Input, Select, Space, Spin, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import AdminLayout from '../../layout';
-import { extractApiErrorMessage, formatDateTime, formatDurationMS, localizePolicyActionLabel, localizePolicyMenuLabel } from '../../common';
+import { formatDateTime, formatDurationMS, localizePolicyActionLabel, localizePolicyMenuLabel } from '../../common';
 import { listAuditLogs, type AuditLogItem } from '@/api/endpoints/admin';
 import { useI18n } from '@/i18n';
-import { notifyError } from '@/lib/notify';
+import { notifyApiError } from '@/lib/api-error';
 
 type AuditQueryState = {
   keyword: string;
@@ -90,7 +90,7 @@ export default function AdminAuditPage() {
         pageSize: response.page_size
       });
     } catch (error) {
-      notifyError(extractApiErrorMessage(error) ?? t('admin.auditLoadFailed'));
+      notifyApiError(error, t('admin.auditLoadFailed'));
     } finally {
       setLoading(false);
     }

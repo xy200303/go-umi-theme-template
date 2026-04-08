@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Input, Select, Space, Spin, Table, Tag } from 'antd';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import AdminLayout from '../../layout';
-import { extractApiErrorMessage, formatDateTime } from '../../common';
+import { formatDateTime } from '../../common';
 import { getAdminFileStats, listAdminFiles, type AdminFileItem, type AdminFileStats } from '@/api/endpoints/admin';
 import TechStatCard from '@/components/ui/TechStatCard';
 import { useI18n } from '@/i18n';
-import { notifyError } from '@/lib/notify';
+import { notifyApiError } from '@/lib/api-error';
 
 type FileQueryState = {
   keyword: string;
@@ -96,7 +96,7 @@ export default function AdminFilesPage() {
         pageSize: listResp.page_size
       });
     } catch (error) {
-      notifyError(extractApiErrorMessage(error) ?? t('admin.fileLoadFailed'));
+      notifyApiError(error, t('admin.fileLoadFailed'));
     } finally {
       setLoading(false);
     }
