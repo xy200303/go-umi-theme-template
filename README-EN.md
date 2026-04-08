@@ -25,7 +25,7 @@ An enterprise-ready starter built with `Gin + React + Casbin + JWT + PostgreSQL 
 ## Tech Stack
 
 - Backend: Go, Gin, Gorm, Casbin, Redis, PostgreSQL
-- Frontend: React, Vite, TypeScript, Bun, Ant Design, Tailwind CSS
+- Frontend: Umi.js, React, TypeScript, Bun, Ant Design, Tailwind CSS
 - Cloud services: Tencent SMS, Tencent COS
 
 ## Project Structure
@@ -100,7 +100,7 @@ bun run dev
 
 Default frontend dev address: `http://127.0.0.1:5173`
 
-Vite is already configured to proxy `/api` requests to `http://127.0.0.1:8080`.
+Umi is already configured to proxy `/api` requests to `http://127.0.0.1:8080`, and writes build output to `backend/web`.
 
 ### Option 2: Full Docker Compose Deployment
 

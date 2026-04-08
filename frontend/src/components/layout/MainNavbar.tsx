@@ -1,7 +1,8 @@
 import { Dropdown } from 'antd';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from '@/lib/router';
 import { useAuthStore } from '@/stores';
 import { logout } from '@/api/endpoints/auth';
+import { adminRoutePaths, routePaths } from '@/constants/routes';
 import { useI18n, type Locale } from '@/i18n';
 import AppAvatar from '@/components/ui/AppAvatar';
 
@@ -18,7 +19,7 @@ export default function MainNavbar() {
       }
     } finally {
       clearLogin();
-      navigate('/login');
+      navigate(routePaths.login);
     }
   };
 
@@ -34,13 +35,13 @@ export default function MainNavbar() {
             <span className="brand-text text-lg">{t('brand.name')}</span>
           </div>
           <nav className="main-navbar__menu">
-            <Link className={linkClass('/')} to="/">
+            <Link className={linkClass(routePaths.home)} to={routePaths.home}>
               {t('nav.home')}
             </Link>
-            <Link className={linkClass('/about')} to="/about">
+            <Link className={linkClass(routePaths.about)} to={routePaths.about}>
               {t('nav.about')}
             </Link>
-            <Link className={linkClass('/blog')} to="/blog">
+            <Link className={linkClass(routePaths.blog)} to={routePaths.blog}>
               {t('nav.news')}
             </Link>
           </nav>
@@ -81,14 +82,14 @@ export default function MainNavbar() {
                 {
                   key: 'profile',
                   label: t('nav.profile'),
-                  onClick: () => navigate('/profile')
+                  onClick: () => navigate(routePaths.profile)
                 },
                 ...(isAdmin()
                   ? [
                       {
                         key: 'admin',
                         label: t('nav.admin'),
-                        onClick: () => navigate('/admin/home')
+                        onClick: () => navigate(adminRoutePaths.home)
                       }
                     ]
                   : []),

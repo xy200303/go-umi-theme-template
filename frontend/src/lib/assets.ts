@@ -1,3 +1,5 @@
+import { getClientEnv, isDev } from '@/lib/env';
+
 const DEFAULT_AVATAR_SVG = encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160" fill="none">
   <defs>
@@ -15,7 +17,7 @@ const DEFAULT_AVATAR_SVG = encodeURIComponent(`
 export const DEFAULT_AVATAR_URL = `data:image/svg+xml;charset=UTF-8,${DEFAULT_AVATAR_SVG}`;
 
 function resolveApiOrigin(): string {
-  const apiBase = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
+  const apiBase = getClientEnv('API_BASE_URL') ?? '/api/v1';
 
   if (/^https?:\/\//i.test(apiBase)) {
     const url = new URL(apiBase);
@@ -26,7 +28,7 @@ function resolveApiOrigin(): string {
     return '';
   }
 
-  const devOrigin = import.meta.env.DEV ? 'http://127.0.0.1:8080' : window.location.origin;
+  const devOrigin = isDev() ? 'http://127.0.0.1:8080' : window.location.origin;
   return new URL(apiBase, devOrigin).origin;
 }
 

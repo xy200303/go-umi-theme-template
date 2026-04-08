@@ -602,6 +602,9 @@ function format(text: string, vars?: Record<string, string | number>): string {
 }
 
 function resolveInitialLocale(): Locale {
+  if (typeof localStorage === 'undefined' || typeof navigator === 'undefined') {
+    return 'zh-CN';
+  }
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved === 'zh-CN' || saved === 'en-US') {
     return saved;
@@ -614,12 +617,15 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(resolveInitialLocale);
 
   useEffect(() => {
+    if (typeof document === 'undefined') return;
     document.documentElement.lang = locale;
   }, [locale]);
 
   const setLocale = (next: Locale) => {
     setLocaleState(next);
-    localStorage.setItem(STORAGE_KEY, next);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, next);
+    }
   };
 
   const value = useMemo<I18nContextValue>(

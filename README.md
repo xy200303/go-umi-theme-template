@@ -26,7 +26,7 @@
 ## 技术栈
 
 - 后端：Go、Gin、Gorm、Casbin、Redis、PostgreSQL
-- 前端：React、Vite、TypeScript、Bun、Ant Design、Tailwind CSS
+- 前端：Umi.js、React、TypeScript、Bun、Ant Design、Tailwind CSS
 - 云服务：Tencent SMS、Tencent COS
 
 ## 项目结构
@@ -101,7 +101,7 @@ bun run dev
 
 默认前端开发地址：`http://127.0.0.1:5173`
 
-Vite 已配置 `/api` 代理到 `http://127.0.0.1:8080`。
+Umi 已配置 `/api` 代理到 `http://127.0.0.1:8080`，并将构建产物输出到 `backend/web`。
 
 ### 方式二：Docker Compose 整体部署
 

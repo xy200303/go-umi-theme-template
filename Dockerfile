@@ -6,7 +6,7 @@ WORKDIR /src/frontend
 COPY frontend/package.json frontend/bun.lock ./
 RUN bun install --frozen-lockfile
 
-# 将 Vite 前端构建到 backend/web，供 Go 服务直接托管静态资源。
+# 将 Umi 前端构建到 backend/web，供 Go 服务直接托管静态资源。
 FROM oven/bun:1 AS frontend-builder
 WORKDIR /src
 COPY --from=frontend-deps /src/frontend/node_modules ./frontend/node_modules
