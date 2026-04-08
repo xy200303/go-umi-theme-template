@@ -50,6 +50,8 @@ export type PolicyTemplateSection = {
 
 export type PolicyTemplateScopeKey = 'admin' | 'user' | 'other';
 
+type TranslateFn = (key: string, vars?: Record<string, string | number>) => string;
+
 export const formLabelClassName = 'mb-1 block text-sm font-medium text-slate-600';
 export const usernamePattern = /^[A-Za-z0-9_]+$/;
 
@@ -81,6 +83,132 @@ const SECTION_AGGREGATE_POLICIES: Record<string, RolePolicy[]> = {
     { method: 'POST', path: '/api/v1/user/*' }
   ]
 };
+
+const POLICY_MENU_I18N_KEYS: Record<string, string> = {
+  auth: 'admin.auditModuleAuth',
+  dashboard: 'admin.auditModuleDashboard',
+  users: 'admin.auditModuleUsers',
+  roles: 'admin.auditModuleRoles',
+  configs: 'admin.auditModuleConfigs',
+  audits: 'admin.auditModuleAudits',
+  files: 'admin.menuFiles',
+  profile: 'admin.auditModuleProfile'
+};
+
+const POLICY_OPERATION_I18N_KEYS: Record<string, { label: string; description?: string }> = {
+  'dashboard.stats.get': {
+    label: 'admin.policyActionViewStats',
+    description: 'admin.policyDescViewStats'
+  },
+  'audits.list': {
+    label: 'admin.policyActionListAudits',
+    description: 'admin.policyDescListAudits'
+  },
+  'files.admin.list': {
+    label: 'admin.policyActionListFiles',
+    description: 'admin.policyDescListFiles'
+  },
+  'files.admin.stats': {
+    label: 'admin.policyActionViewFileStats',
+    description: 'admin.policyDescViewFileStats'
+  },
+  'files.upload': {
+    label: 'admin.policyActionUploadFile',
+    description: 'admin.policyDescUploadFile'
+  },
+  'files.direct.init': {
+    label: 'admin.policyActionInitDirectUpload',
+    description: 'admin.policyDescInitDirectUpload'
+  },
+  'files.direct.complete': {
+    label: 'admin.policyActionCompleteDirectUpload',
+    description: 'admin.policyDescCompleteDirectUpload'
+  },
+  'users.list': {
+    label: 'admin.policyActionListUsers',
+    description: 'admin.policyDescListUsers'
+  },
+  'users.create': {
+    label: 'admin.policyActionCreateUser',
+    description: 'admin.policyDescCreateUser'
+  },
+  'users.update': {
+    label: 'admin.policyActionUpdateUser',
+    description: 'admin.policyDescUpdateUser'
+  },
+  'users.delete': {
+    label: 'admin.policyActionDeleteUser',
+    description: 'admin.policyDescDeleteUser'
+  },
+  'users.password': {
+    label: 'admin.policyActionResetUserPassword',
+    description: 'admin.policyDescResetUserPassword'
+  },
+  'users.roles': {
+    label: 'admin.policyActionAssignUserRoles',
+    description: 'admin.policyDescAssignUserRoles'
+  },
+  'roles.list': {
+    label: 'admin.policyActionListRoles',
+    description: 'admin.policyDescListRoles'
+  },
+  'roles.create': {
+    label: 'admin.policyActionCreateRole',
+    description: 'admin.policyDescCreateRole'
+  },
+  'roles.update': {
+    label: 'admin.policyActionUpdateRole',
+    description: 'admin.policyDescUpdateRole'
+  },
+  'roles.delete': {
+    label: 'admin.policyActionDeleteRole',
+    description: 'admin.policyDescDeleteRole'
+  },
+  'roles.policies.get': {
+    label: 'admin.policyActionViewRolePolicies',
+    description: 'admin.policyDescViewRolePolicies'
+  },
+  'roles.policies.set': {
+    label: 'admin.policyActionSaveRolePolicies',
+    description: 'admin.policyDescSaveRolePolicies'
+  },
+  'configs.list': {
+    label: 'admin.policyActionListConfigs',
+    description: 'admin.policyDescListConfigs'
+  },
+  'configs.save': {
+    label: 'admin.policyActionSaveConfigs',
+    description: 'admin.policyDescSaveConfigs'
+  },
+  'profile.view': {
+    label: 'admin.policyActionViewProfile',
+    description: 'admin.policyDescViewProfile'
+  },
+  'profile.update': {
+    label: 'admin.policyActionUpdateProfile',
+    description: 'admin.policyDescUpdateProfile'
+  },
+  'profile.password': {
+    label: 'admin.policyActionResetOwnPassword',
+    description: 'admin.policyDescResetOwnPassword'
+  },
+  'profile.phone': {
+    label: 'admin.policyActionChangePhone',
+    description: 'admin.policyDescChangePhone'
+  },
+  'profile.avatar': {
+    label: 'admin.policyActionUploadAvatar',
+    description: 'admin.policyDescUploadAvatar'
+  }
+};
+
+function translateKnownKey(t: TranslateFn, key?: string, fallback = ''): string {
+  if (!key) {
+    return fallback;
+  }
+  const translated = t(key);
+  return translated === key ? fallback : translated;
+}
 
 export function createEmptyUserFormValues(): UserFormValues {
   return {
@@ -249,4 +377,26 @@ export function buildPoliciesFromSelection(selectedKeys: string[], sections: Pol
   });
 
   return uniquePolicies(policies);
+}
+
+export function localizePolicyMenuLabel(menuKey: string, fallback: string | undefined, t: TranslateFn): string {
+  return translateKnownKey(t, POLICY_MENU_I18N_KEYS[menuKey], fallback?.trim() || menuKey);
+}
+
+export function localizePolicyActionLabel(operationId: string, fallback: string | undefined, t: TranslateFn): string {
+  return translateKnownKey(t, POLICY_OPERATION_I18N_KEYS[operationId]?.label, fallback?.trim() || operationId);
+}
+
+export function localizePolicyDescription(operationId: string, fallback: string | undefined, t: TranslateFn): string | undefined {
+  const translated = translateKnownKey(t, POLICY_OPERATION_I18N_KEYS[operationId]?.description, fallback?.trim() || '');
+  return translated || undefined;
+}
+
+export function localizePolicyTemplate(template: PolicyTemplate, t: TranslateFn): PolicyTemplate {
+  return {
+    ...template,
+    menuLabel: localizePolicyMenuLabel(template.menuKey, template.menuLabel, t),
+    actionLabel: localizePolicyActionLabel(template.key, template.actionLabel, t),
+    description: localizePolicyDescription(template.key, template.description, t)
+  };
 }

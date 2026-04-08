@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Input, Select, Space, Spin, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import AdminLayout from '../../layout';
-import { extractApiErrorMessage, formatDateTime, formatDurationMS } from '../../common';
+import { extractApiErrorMessage, formatDateTime, formatDurationMS, localizePolicyActionLabel, localizePolicyMenuLabel } from '../../common';
 import { listAuditLogs, type AuditLogItem } from '@/api/endpoints/admin';
 import { useI18n } from '@/i18n';
 import { notifyError } from '@/lib/notify';
@@ -14,6 +14,8 @@ type AuditQueryState = {
   page: number;
   pageSize: number;
 };
+
+
 
 const statusCodeOptions = [200, 201, 400, 401, 403, 404, 422, 500];
 
@@ -108,14 +110,16 @@ export default function AdminAuditPage() {
       {
         title: t('admin.tableModule'),
         width: 140,
-        render: (_value, record) => record.menu_label || '-'
+        render: (_value, record) => localizePolicyMenuLabel(record.menu_key, record.menu_label, t) || '-'
       },
       {
         title: t('admin.tableOperation'),
         width: 260,
         render: (_value, record) => (
           <div className="space-y-1">
-            <div className="font-medium text-slate-700">{record.operation_name || t('admin.auditEmptyOperation')}</div>
+            <div className="font-medium text-slate-700">
+              {localizePolicyActionLabel(record.operation_id, record.operation_name, t) || t('admin.auditEmptyOperation')}
+            </div>
             <div className="text-xs text-slate-500">{record.operation_id || '-'}</div>
           </div>
         )

@@ -9,6 +9,7 @@ import {
   formLabelClassName,
   getPolicyTemplateScopeKey,
   getPolicyMethodColor,
+  localizePolicyTemplate,
   mapRoleToFormValues,
   matchesPolicyTemplate,
   uniquePolicies,
@@ -48,16 +49,21 @@ export default function AdminRolesPage() {
 
   const policyTemplates = useMemo<PolicyTemplate[]>(
     () =>
-      policyTemplateItems.map((item) => ({
-        key: item.key,
-        menuKey: item.menu_key,
-        menuLabel: item.menu_label,
-        actionLabel: item.action_label,
-        description: item.description,
-        method: item.method,
-        path: item.path
-      })),
-    [policyTemplateItems]
+      policyTemplateItems.map((item) =>
+        localizePolicyTemplate(
+          {
+            key: item.key,
+            menuKey: item.menu_key,
+            menuLabel: item.menu_label,
+            actionLabel: item.action_label,
+            description: item.description,
+            method: item.method,
+            path: item.path
+          },
+          t
+        )
+      ),
+    [policyTemplateItems, t]
   );
   const policyTemplateByIdentity = useMemo(
     () => new Map(policyTemplates.map((item) => [`${item.method} ${item.path}`, item])),
