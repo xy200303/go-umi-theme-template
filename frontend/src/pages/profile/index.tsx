@@ -10,6 +10,8 @@ import { changePhone, getProfile, resetPassword, updateProfile } from '@/api/end
 import { sendSmsCode } from '@/api/endpoints/auth';
 import { useSmsVerifyEnabled } from '@/lib/auth-config';
 import { notifyApiError } from '@/lib/api-error';
+import { routePaths } from '@/constants/routes';
+import { useNavigate } from '@/lib/router';
 import { useAuthStore } from '@/stores';
 import { useI18n } from '@/i18n';
 import { notifyError, notifySuccess, notifyWarning } from '@/lib/notify';
@@ -76,7 +78,8 @@ function mapUserToProfileForm(user: AuthUser): ProfileForm {
 }
 
 export default function ProfilePage() {
-  const { user, updateUser } = useAuthStore();
+  const navigate = useNavigate();
+  const { user, updateUser, clearLogin } = useAuthStore();
   const { t } = useI18n();
   const smsVerifyEnabled = useSmsVerifyEnabled();
   const [collapsed, setCollapsed] = useState(false);
@@ -159,6 +162,8 @@ export default function ProfilePage() {
       await resetPassword(passwordFormData);
       resetPasswordModalState();
       notifySuccess(t('profile.passwordResetSuccess'));
+      clearLogin();
+      navigate(routePaths.login);
     } catch (error) {
       notifyApiError(error, t('profile.passwordResetFailed'));
     } finally {

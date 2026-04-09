@@ -1,4 +1,4 @@
-﻿package middleware
+package middleware
 
 import (
 	"net/http"
@@ -11,7 +11,11 @@ import (
 
 const ContextClaimsKey = "jwt_claims"
 
-func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
+type SessionVersionChecker interface {
+	IsSessionVersionCurrent(userID uint, sessionVersion int) (bool, error)
+}
+
+func AuthMiddleware(cfg *config.Config, checker SessionVersionChecker) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if !strings.HasPrefix(authHeader, "Bearer ") {
@@ -26,6 +30,19 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 			utils.Fail(c, http.StatusUnauthorized, "access token expired or invalid")
 			c.Abort()
 			return
+		}
+		if checker != nil {
+			valid, checkErr := checker.IsSessionVersionCurrent(claims.UserID, claims.SessionVersion)
+			if checkErr != nil {
+				utils.Fail(c, http.StatusInternalServerError, "session validation failed")
+				c.Abort()
+				return
+			}
+			if !valid {
+				utils.Fail(c, http.StatusUnauthorized, "access token expired or invalid")
+				c.Abort()
+				return
+			}
 		}
 
 		c.Set(ContextClaimsKey, claims)

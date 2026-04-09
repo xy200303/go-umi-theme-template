@@ -16,11 +16,12 @@ const (
 
 // CustomClaims defines shared JWT claims for both access and refresh tokens.
 type CustomClaims struct {
-	UserID   uint      `json:"uid"`
-	Username string    `json:"username"`
-	Roles    []string  `json:"roles"`
-	Type     TokenType `json:"type"`
-	JTI      string    `json:"jti"`
+	UserID         uint      `json:"uid"`
+	Username       string    `json:"username"`
+	Roles          []string  `json:"roles"`
+	SessionVersion int       `json:"sv"`
+	Type           TokenType `json:"type"`
+	JTI            string    `json:"jti"`
 	jwt.RegisteredClaims
 }
 

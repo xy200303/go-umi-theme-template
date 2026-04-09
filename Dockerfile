@@ -16,7 +16,7 @@ WORKDIR /src/frontend
 RUN bun run build
 
 # 编译 Go 后端，并把前端构建产物一并放入后端运行目录。
-FROM golang:1.24-alpine AS backend-builder
+FROM golang:alpine AS backend-builder
 WORKDIR /src/backend
 RUN apk add --no-cache ca-certificates tzdata
 COPY backend/go.mod backend/go.sum ./

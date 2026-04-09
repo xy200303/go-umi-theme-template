@@ -25,16 +25,21 @@ import {
   type RoleItem,
   type UpdateAdminUserPayload
 } from '@/api/endpoints/admin';
+import { syncCurrentSession } from '@/api/client/http';
 import AppAvatar from '@/components/ui/AppAvatar';
 import { uploadUserFile } from '@/api/endpoints/file';
 import { useI18n } from '@/i18n';
+import { useNavigate } from '@/lib/router';
 import { notifyApiError } from '@/lib/api-error';
+import { canAccessRoute, getFirstAccessibleAdminPath } from '@/lib/access';
 import { notifyError, notifySuccess } from '@/lib/notify';
+import { adminRoutePaths, routePaths } from '@/constants/routes';
 import { useAuthStore } from '@/stores';
 import type { AuthUser } from '@/types/auth';
 
 export default function AdminUsersPage() {
   const [passwordForm] = Form.useForm<PasswordFormValues>();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<AuthUser[]>([]);
   const [roles, setRoles] = useState<RoleItem[]>([]);
@@ -49,6 +54,7 @@ export default function AdminUsersPage() {
   const [passwordTargetUser, setPasswordTargetUser] = useState<AuthUser | null>(null);
   const { t } = useI18n();
   const currentUser = useAuthStore((state) => state.user);
+  const clearLogin = useAuthStore((state) => state.clearLogin);
 
   const roleNames = useMemo(() => roles.map((role) => role.name), [roles]);
   const isReservedAdminUser = editingUser?.username === 'admin';
@@ -246,6 +252,11 @@ export default function AdminUsersPage() {
     try {
       await resetUserPassword(passwordTargetUser.id, values.password.trim());
       notifySuccess(t('admin.userPasswordResetSuccess'));
+      if (passwordTargetUser.id === currentUser?.id) {
+        clearLogin();
+        navigate(routePaths.login);
+        return;
+      }
       closePasswordModal();
     } catch (error) {
       notifyApiError(error, t('admin.userPasswordResetFailed'));
@@ -276,6 +287,21 @@ export default function AdminUsersPage() {
   const onUpdateUserRoles = async (userId: number, names: string[]) => {
     try {
       await updateUserRoles(userId, names);
+      const isCurrentUser = currentUser?.id === userId;
+      if (isCurrentUser) {
+        const sessionSynced = await syncCurrentSession();
+        if (!sessionSynced) {
+          navigate(routePaths.login);
+          return;
+        }
+
+        const nextUser = useAuthStore.getState().user;
+        if (!canAccessRoute(nextUser, adminRoutePaths.systemUsers)) {
+          navigate(getFirstAccessibleAdminPath(nextUser) ?? routePaths.home);
+          return;
+        }
+      }
+
       notifySuccess(t('admin.usersUpdated'));
       await loadPageData(userKeyword.trim());
     } catch (error) {

@@ -189,6 +189,9 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*respon
 	if err != nil {
 		return nil, fmt.Errorf("用户不存在")
 	}
+	if user.SessionVersion != claims.SessionVersion {
+		return nil, fmt.Errorf("刷新令牌已失效")
+	}
 
 	_ = s.refreshRepo.Delete(ctx, claims.JTI)
 	pair, err := s.issueTokenPair(ctx, *user)
@@ -228,11 +231,12 @@ func (s *AuthService) issueTokenPair(ctx context.Context, user entities.User) (r
 
 	accessJTI := uuid.NewString()
 	accessToken, err := utils.GenerateToken(s.cfg.JWTAccessSecret, s.cfg.AccessExpireDuration(), utils.CustomClaims{
-		UserID:   user.ID,
-		Username: user.Username,
-		Roles:    roles,
-		Type:     utils.TokenTypeAccess,
-		JTI:      accessJTI,
+		UserID:         user.ID,
+		Username:       user.Username,
+		Roles:          roles,
+		SessionVersion: user.SessionVersion,
+		Type:           utils.TokenTypeAccess,
+		JTI:            accessJTI,
 	})
 	if err != nil {
 		return response.TokenResp{}, err
@@ -240,11 +244,12 @@ func (s *AuthService) issueTokenPair(ctx context.Context, user entities.User) (r
 
 	refreshJTI := uuid.NewString()
 	refreshToken, err := utils.GenerateToken(s.cfg.JWTRefreshSecret, s.cfg.RefreshExpireDuration(), utils.CustomClaims{
-		UserID:   user.ID,
-		Username: user.Username,
-		Roles:    roles,
-		Type:     utils.TokenTypeRefresh,
-		JTI:      refreshJTI,
+		UserID:         user.ID,
+		Username:       user.Username,
+		Roles:          roles,
+		SessionVersion: user.SessionVersion,
+		Type:           utils.TokenTypeRefresh,
+		JTI:            refreshJTI,
 	})
 	if err != nil {
 		return response.TokenResp{}, err

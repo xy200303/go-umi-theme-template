@@ -1,7 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { getClientEnv } from '@/lib/env';
 import { useAuthStore } from '@/stores';
-import type { ApiEnvelope, AuthToken } from '@/types/auth';
+import type { ApiEnvelope, AuthToken, AuthUser } from '@/types/auth';
 
 const baseURL = getClientEnv('API_BASE_URL') ?? '/api/v1';
 
@@ -14,6 +14,49 @@ const refreshClient = axios.create({
   baseURL,
   timeout: 15000
 });
+
+async function fetchCurrentUser(accessToken: string): Promise<AuthUser> {
+  const { data } = await refreshClient.get<ApiEnvelope<AuthUser>>('/user/profile', {
+    headers: {
+      Authorization: `Bearer ${accessToken}`
+    }
+  });
+  return data.data;
+}
+
+async function refreshAuthToken(refreshToken: string): Promise<AuthToken> {
+  const { data } = await refreshClient.post<ApiEnvelope<AuthToken>>('/auth/refresh', {
+    refresh_token: refreshToken
+  });
+  return data.data;
+}
+
+export async function syncCurrentSession(): Promise<boolean> {
+  const current = useAuthStore.getState();
+  const refreshToken = current.token?.refresh_token;
+
+  if (!refreshToken || !current.user) {
+    current.clearLogin();
+    return false;
+  }
+
+  try {
+    const nextToken = await refreshAuthToken(refreshToken);
+    let nextUser = current.user;
+
+    try {
+      nextUser = await fetchCurrentUser(nextToken.access_token);
+    } catch {
+      // Keep the session usable even if profile sync fails transiently.
+    }
+
+    useAuthStore.getState().setLogin(nextToken, nextUser);
+    return true;
+  } catch {
+    useAuthStore.getState().clearLogin();
+    return false;
+  }
+}
 
 function attachAuth(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
   const token = useAuthStore.getState().token?.access_token;
@@ -67,17 +110,13 @@ http.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      const resp = await refreshClient.post<ApiEnvelope<AuthToken>>('/auth/refresh', {
-        refresh_token: refreshToken
-      });
+      const sessionSynced = await syncCurrentSession();
       const current = useAuthStore.getState();
-      if (!current.user) {
-        current.clearLogin();
+      if (!sessionSynced || !current.token) {
         return Promise.reject(error);
       }
-      current.setLogin(resp.data.data, current.user);
-      resolveQueue(resp.data.data.access_token);
-      originalRequest.headers.Authorization = `Bearer ${resp.data.data.access_token}`;
+      resolveQueue(current.token.access_token);
+      originalRequest.headers.Authorization = `Bearer ${current.token.access_token}`;
       return http(originalRequest);
     } catch (refreshErr) {
       resolveQueue(null);

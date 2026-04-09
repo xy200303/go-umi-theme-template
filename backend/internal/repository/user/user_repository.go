@@ -80,7 +80,33 @@ func (r *UserRepository) Update(user *entities.User) error {
 }
 
 func (r *UserRepository) UpdatePassword(userID uint, passwordHash string) error {
-	return r.db.Model(&entities.User{}).Where("id = ?", userID).Update("password_hash", passwordHash).Error
+	return r.db.Model(&entities.User{}).
+		Where("id = ?", userID).
+		Updates(map[string]any{
+			"password_hash":   passwordHash,
+			"session_version": gorm.Expr("session_version + 1"),
+		}).Error
+}
+
+func (r *UserRepository) IsSessionVersionCurrent(userID uint, sessionVersion int) (bool, error) {
+	var user struct {
+		SessionVersion int
+		IsActive       bool
+	}
+	err := r.db.Model(&entities.User{}).
+		Select("session_version", "is_active").
+		Where("id = ?", userID).
+		First(&user).Error
+	if err == gorm.ErrRecordNotFound {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if !user.IsActive {
+		return false, nil
+	}
+	return user.SessionVersion == sessionVersion, nil
 }
 
 func (r *UserRepository) SetRoles(userID uint, roles []entities.Role) error {

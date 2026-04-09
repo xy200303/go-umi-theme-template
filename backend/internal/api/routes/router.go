@@ -28,16 +28,17 @@ import (
 )
 
 type AppContext struct {
-	Config *config.Config
-	DB     *gorm.DB
-	Redis  *redis.Client
+	Config   *config.Config
+	DB       *gorm.DB
+	Redis    *redis.Client
+	UserRepo *userrepo.UserRepository
 
-	CasbinService  *accesssvc.CasbinService
-	AuthService    *authsvc.AuthService
-	UserService    *usersvc.UserService
-	AdminService   *adminsvc.AdminService
-	FileService    *filesvc.FileService
-	SMSService     *authsvc.SMSService
+	CasbinService *accesssvc.CasbinService
+	AuthService   *authsvc.AuthService
+	UserService   *usersvc.UserService
+	AdminService  *adminsvc.AdminService
+	FileService   *filesvc.FileService
+	SMSService    *authsvc.SMSService
 
 	AuthController  *controllers.AuthController
 	UserController  *controllers.UserController
@@ -67,15 +68,16 @@ func NewAppContext(cfg *config.Config, db *gorm.DB, redis *redis.Client) (*AppCo
 	fileService.StartCleanupWorker(context.Background())
 
 	ctx := &AppContext{
-		Config:         cfg,
-		DB:             db,
-		Redis:          redis,
-		CasbinService:  casbinService,
-		AuthService:    authService,
-		UserService:    userService,
-		AdminService:   adminService,
-		FileService:    fileService,
-		SMSService:     smsService,
+		Config:        cfg,
+		DB:            db,
+		Redis:         redis,
+		UserRepo:      userRepo,
+		CasbinService: casbinService,
+		AuthService:   authService,
+		UserService:   userService,
+		AdminService:  adminService,
+		FileService:   fileService,
+		SMSService:    smsService,
 	}
 
 	ctx.AuthController = controllers.NewAuthController(authService)
@@ -119,7 +121,7 @@ func SetupRouter(app *AppContext) *gin.Engine {
 
 		secured := api.Group("")
 		secured.Use(
-			middleware.AuthMiddleware(app.Config),
+			middleware.AuthMiddleware(app.Config, app.UserRepo),
 			middleware.AuditLogMiddleware(app.AdminService),
 			middleware.RBACMiddleware(app.CasbinService),
 		)

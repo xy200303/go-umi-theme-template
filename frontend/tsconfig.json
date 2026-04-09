@@ -13,9 +13,8 @@
     "jsx": "react-jsx",
     "strict": true,
     "types": ["node"],
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src", ".umirc.ts"]
