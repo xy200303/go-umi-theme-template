@@ -10,7 +10,6 @@ import (
 	"backend/internal/api/controllers"
 	"backend/internal/api/middleware"
 	"backend/internal/pkg/config"
-	apigatewayrepo "backend/internal/repository/api_gateway"
 	authrepo "backend/internal/repository/auth"
 	filerepo "backend/internal/repository/file"
 	rolerepo "backend/internal/repository/role"
@@ -18,7 +17,6 @@ import (
 	userrepo "backend/internal/repository/user"
 	accesssvc "backend/internal/service/access"
 	adminsvc "backend/internal/service/admin"
-	apigatewaysvc "backend/internal/service/api_gateway"
 	authsvc "backend/internal/service/auth"
 	filesvc "backend/internal/service/file"
 	usersvc "backend/internal/service/user"
@@ -35,26 +33,21 @@ type AppContext struct {
 	Redis    *redis.Client
 	UserRepo *userrepo.UserRepository
 
-	CasbinService     *accesssvc.CasbinService
-	AuthService       *authsvc.AuthService
-	UserService       *usersvc.UserService
-	APIGatewayService *apigatewaysvc.APIGatewayService
-	AdminService      *adminsvc.AdminService
-	FileService       *filesvc.FileService
-	SMSService        *authsvc.SMSService
+	CasbinService *accesssvc.CasbinService
+	AuthService   *authsvc.AuthService
+	UserService   *usersvc.UserService
+	AdminService  *adminsvc.AdminService
+	FileService   *filesvc.FileService
+	SMSService    *authsvc.SMSService
 
-	AuthController       *controllers.AuthController
-	UserController       *controllers.UserController
-	APIGatewayController *controllers.APIGatewayController
-	AdminController      *controllers.AdminController
-	FileController       *controllers.FileController
+	AuthController  *controllers.AuthController
+	UserController  *controllers.UserController
+	AdminController *controllers.AdminController
+	FileController  *controllers.FileController
 }
 
 func NewAppContext(cfg *config.Config, db *gorm.DB, redis *redis.Client) (*AppContext, error) {
 	userRepo := userrepo.NewUserRepository(db)
-	userInterfaceRepo := apigatewayrepo.NewUserInterfaceRepository(db)
-	gatewayLogRepo := apigatewayrepo.NewGatewayRequestLogRepository(db)
-	chatRecordRepo := apigatewayrepo.NewChatRecordRepository(db)
 	fileRepo := filerepo.NewFileRepository(db)
 	roleRepo := rolerepo.NewRoleRepository(db)
 	cfgRepo := systemrepo.NewSystemConfigRepository(db)
@@ -71,27 +64,24 @@ func NewAppContext(cfg *config.Config, db *gorm.DB, redis *redis.Client) (*AppCo
 	fileService := filesvc.NewFileService(cfg, fileRepo, fileStorageService, cfgRepo)
 	authService := authsvc.NewAuthService(cfg, userRepo, roleRepo, refreshRepo, smsService, casbinService, fileService)
 	userService := usersvc.NewUserService(cfg, userRepo, smsService, casbinService, fileService)
-	apiGatewayService := apigatewaysvc.NewAPIGatewayService(cfg, userInterfaceRepo, gatewayLogRepo, chatRecordRepo)
 	adminService := adminsvc.NewAdminService(userRepo, fileRepo, roleRepo, cfgRepo, auditRepo, casbinService, redis, fileService)
 	fileService.StartCleanupWorker(context.Background())
 
 	ctx := &AppContext{
-		Config:            cfg,
-		DB:                db,
-		Redis:             redis,
-		UserRepo:          userRepo,
-		CasbinService:     casbinService,
-		AuthService:       authService,
-		UserService:       userService,
-		APIGatewayService: apiGatewayService,
-		AdminService:      adminService,
-		FileService:       fileService,
-		SMSService:        smsService,
+		Config:        cfg,
+		DB:            db,
+		Redis:         redis,
+		UserRepo:      userRepo,
+		CasbinService: casbinService,
+		AuthService:   authService,
+		UserService:   userService,
+		AdminService:  adminService,
+		FileService:   fileService,
+		SMSService:    smsService,
 	}
 
 	ctx.AuthController = controllers.NewAuthController(authService)
 	ctx.UserController = controllers.NewUserController(userService)
-	ctx.APIGatewayController = controllers.NewAPIGatewayController(apiGatewayService)
 	ctx.AdminController = controllers.NewAdminController(adminService)
 	ctx.FileController = controllers.NewFileController(fileService)
 
@@ -143,15 +133,6 @@ func SetupRouter(app *AppContext) *gin.Engine {
 				user.POST("/password/reset", app.UserController.ResetPassword)
 				user.POST("/phone/change", app.UserController.ChangePhone)
 				user.POST("/avatar/upload", app.UserController.UploadAvatar)
-				user.GET("/interfaces", app.APIGatewayController.ListInterfaces)
-				user.POST("/interfaces", app.APIGatewayController.CreateInterface)
-				user.PUT("/interfaces/:id", app.APIGatewayController.UpdateInterface)
-				user.DELETE("/interfaces/:id", app.APIGatewayController.DeleteInterface)
-				user.POST("/interfaces/:id/regenerate-key", app.APIGatewayController.RegenerateInterfaceGatewayKey)
-				user.POST("/interfaces/:id/test", app.APIGatewayController.TestInterfaceConnection)
-				user.GET("/gateway-logs", app.APIGatewayController.ListGatewayRequestLogs)
-				user.GET("/chat-records", app.APIGatewayController.ListChatRecords)
-				user.GET("/gateway-display-config", app.APIGatewayController.GetGatewayDisplayConfig)
 				user.POST("/files/upload", app.FileController.UploadFile)
 				user.POST("/files/direct/init", app.FileController.InitDirectUpload)
 				user.POST("/files/direct/complete", app.FileController.CompleteDirectUpload)
@@ -182,11 +163,6 @@ func SetupRouter(app *AppContext) *gin.Engine {
 		}
 	}
 
-	r.Any("/v1/chat/completions", app.APIGatewayController.ProxyOpenAIChatCompletions)
-	r.Any("/v1/responses", app.APIGatewayController.ProxyOpenAIResponses)
-	r.Any("/anthropic/v1/messages", app.APIGatewayController.ProxyClaudeMessages)
-	r.Any("/gemini/*path", app.APIGatewayController.ProxyGemini)
-
 	registerStaticWeb(r, app.Config.FrontendDistDir)
 	return r
 }
@@ -195,10 +171,6 @@ func registerStaticWeb(r *gin.Engine, distDir string) {
 	indexPath := filepath.Join(distDir, "index.html")
 	r.NoRoute(func(c *gin.Context) {
 		requestPath := c.Request.URL.Path
-		if shouldReturnAPI404(requestPath) {
-			c.JSON(http.StatusNotFound, gin.H{"code": 404, "message": "not found"})
-			return
-		}
 		if requestPath != "" && requestPath != "/" {
 			relativePath := strings.TrimPrefix(requestPath, "/")
 			staticPath := filepath.Clean(filepath.Join(distDir, relativePath))
@@ -221,24 +193,4 @@ func registerStaticWeb(r *gin.Engine, distDir string) {
 		}
 		c.JSON(http.StatusNotFound, gin.H{"code": 404, "message": "not found"})
 	})
-}
-
-func shouldReturnAPI404(requestPath string) bool {
-	apiPrefixes := []string{
-		"/api/",
-		"/v1/",
-		"/v1beta/",
-		"/chat/",
-		"/responses",
-		"/messages",
-		"/anthropic/",
-		"/gemini/",
-	}
-
-	for _, prefix := range apiPrefixes {
-		if strings.HasPrefix(requestPath, prefix) {
-			return true
-		}
-	}
-	return false
 }

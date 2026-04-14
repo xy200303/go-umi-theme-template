@@ -56,7 +56,7 @@ export function canAccessRoute(user: AuthUser | null | undefined, pathname: stri
   if (pathname === routePaths.home) {
     return true;
   }
-  if (pathname === routePaths.profile || pathname === routePaths.profileInterfaces || pathname === routePaths.profileGatewayLogs) {
+  if (pathname === routePaths.profile) {
     return hasAccess(user, 'profile');
   }
   if (pathname === adminRoutePaths.root) {

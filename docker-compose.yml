@@ -12,8 +12,6 @@ services:
       SERVER_PORT: 8080
       SERVER_MODE: release
       FRONTEND_DIST_DIR: web
-      PUBLIC_BACKEND_BASE_URL:
-      PUBLIC_FRONTEND_BASE_URL:
       SMS_VERIFY_ENABLED: "true"
       POSTGRES_DSN: postgres://postgres:postgres@postgres:5432/enterprise_web?sslmode=disable&TimeZone=Asia/Shanghai
       REDIS_ADDR: redis:6379
@@ -21,10 +19,8 @@ services:
       REDIS_DB: 0
       JWT_ACCESS_SECRET: replace-with-access-secret
       JWT_REFRESH_SECRET: replace-with-refresh-secret
-      MINDGATE_KEY_ENCRYPTION_SECRET: replace-with-mindgate-secret
       JWT_ACCESS_EXPIRE_MIN: 30
       JWT_REFRESH_EXPIRE_DAY: 7
-      MINDGATE_UPSTREAM_TIMEOUT_SEC: 300
       UPLOAD_DRIVER: auto
       UPLOAD_LOCAL_PATH: uploads
       UPLOAD_MAX_SIZE_MB: 10

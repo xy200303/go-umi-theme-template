@@ -4,10 +4,7 @@ export const routePaths = {
   blog: '/blog',
   login: '/login',
   register: '/register',
-  profile: '/profile',
-  profileInterfaces: '/profile/interfaces',
-  profileGatewayLogs: '/profile/gateway-logs',
-  profileChatRecords: '/profile/chat-records'
+  profile: '/profile'
 } as const;
 
 export const adminRoutePaths = {
@@ -23,9 +20,6 @@ export const adminRoutePaths = {
 const protectedRoutes = new Set<string>([
   routePaths.home,
   routePaths.profile,
-  routePaths.profileInterfaces,
-  routePaths.profileGatewayLogs,
-  routePaths.profileChatRecords,
   adminRoutePaths.root,
   adminRoutePaths.home,
   adminRoutePaths.systemUsers,
@@ -46,9 +40,6 @@ const adminRoutes = new Set<string>([
 ]);
 
 export function isProtectedRoute(pathname: string): boolean {
-  if (pathname.startsWith('/profile')) {
-    return true;
-  }
   return protectedRoutes.has(pathname);
 }
 

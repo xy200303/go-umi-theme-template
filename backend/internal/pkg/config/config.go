@@ -13,16 +13,14 @@ import (
 
 // Config contains all runtime options loaded from .env.
 type Config struct {
-	ServerPort            string
-	ServerMode            string
-	FrontendDistDir       string
-	PublicBackendBaseURL  string
-	PublicFrontendBaseURL string
-	SMSVerifyEnabled      bool
-	UploadDriver          string
-	UploadLocalPath       string
-	UploadMaxSizeMB       int64
-	AllowedUploadSuffix   []string
+	ServerPort          string
+	ServerMode          string
+	FrontendDistDir     string
+	SMSVerifyEnabled    bool
+	UploadDriver        string
+	UploadLocalPath     string
+	UploadMaxSizeMB     int64
+	AllowedUploadSuffix []string
 
 	PostgresDSN string
 
@@ -30,12 +28,10 @@ type Config struct {
 	RedisPassword string
 	RedisDB       int
 
-	JWTAccessSecret             string
-	JWTRefreshSecret            string
-	JWTAccessExpireMin          int
-	JWTRefreshExpireDay         int
-	MindGateKeyEncryptionSecret string
-	MindGateUpstreamTimeoutSec  int
+	JWTAccessSecret     string
+	JWTRefreshSecret    string
+	JWTAccessExpireMin  int
+	JWTRefreshExpireDay int
 
 	TencentSMSSecretID  string
 	TencentSMSSecretKey string
@@ -62,16 +58,14 @@ func LoadConfig(envPath string) (*Config, error) {
 	}
 
 	cfg := &Config{
-		ServerPort:            getEnv("SERVER_PORT", "8080"),
-		ServerMode:            getEnv("SERVER_MODE", "debug"),
-		FrontendDistDir:       getEnv("FRONTEND_DIST_DIR", "web"),
-		PublicBackendBaseURL:  strings.TrimRight(getEnv("PUBLIC_BACKEND_BASE_URL", ""), "/"),
-		PublicFrontendBaseURL: strings.TrimRight(getEnv("PUBLIC_FRONTEND_BASE_URL", ""), "/"),
-		SMSVerifyEnabled:      getEnvBool("SMS_VERIFY_ENABLED", true),
-		UploadDriver:          strings.ToLower(getEnv("UPLOAD_DRIVER", "local")),
-		UploadLocalPath:       getEnv("UPLOAD_LOCAL_PATH", "uploads"),
-		UploadMaxSizeMB:       getEnvInt64("UPLOAD_MAX_SIZE_MB", 10),
-		AllowedUploadSuffix:   splitCSV(getEnv("UPLOAD_ALLOWED_SUFFIX", "jpg,jpeg,png,gif,webp")),
+		ServerPort:          getEnv("SERVER_PORT", "8080"),
+		ServerMode:          getEnv("SERVER_MODE", "debug"),
+		FrontendDistDir:     getEnv("FRONTEND_DIST_DIR", "web"),
+		SMSVerifyEnabled:    getEnvBool("SMS_VERIFY_ENABLED", true),
+		UploadDriver:        strings.ToLower(getEnv("UPLOAD_DRIVER", "local")),
+		UploadLocalPath:     getEnv("UPLOAD_LOCAL_PATH", "uploads"),
+		UploadMaxSizeMB:     getEnvInt64("UPLOAD_MAX_SIZE_MB", 10),
+		AllowedUploadSuffix: splitCSV(getEnv("UPLOAD_ALLOWED_SUFFIX", "jpg,jpeg,png,gif,webp")),
 
 		PostgresDSN: getEnv("POSTGRES_DSN", getEnv("POSTGRES_URL", "")),
 
@@ -79,12 +73,10 @@ func LoadConfig(envPath string) (*Config, error) {
 		RedisPassword: getEnv("REDIS_PASSWORD", ""),
 		RedisDB:       getEnvInt("REDIS_DB", 0),
 
-		JWTAccessSecret:             getEnv("JWT_ACCESS_SECRET", "change-me-access"),
-		JWTRefreshSecret:            getEnv("JWT_REFRESH_SECRET", "change-me-refresh"),
-		JWTAccessExpireMin:          getEnvInt("JWT_ACCESS_EXPIRE_MIN", 30),
-		JWTRefreshExpireDay:         getEnvInt("JWT_REFRESH_EXPIRE_DAY", 7),
-		MindGateKeyEncryptionSecret: getEnv("MINDGATE_KEY_ENCRYPTION_SECRET", ""),
-		MindGateUpstreamTimeoutSec:  getEnvInt("MINDGATE_UPSTREAM_TIMEOUT_SEC", 300),
+		JWTAccessSecret:     getEnv("JWT_ACCESS_SECRET", "change-me-access"),
+		JWTRefreshSecret:    getEnv("JWT_REFRESH_SECRET", "change-me-refresh"),
+		JWTAccessExpireMin:  getEnvInt("JWT_ACCESS_EXPIRE_MIN", 30),
+		JWTRefreshExpireDay: getEnvInt("JWT_REFRESH_EXPIRE_DAY", 7),
 
 		TencentSMSSecretID:  getEnv("TENCENT_SMS_SECRET_ID", ""),
 		TencentSMSSecretKey: getEnv("TENCENT_SMS_SECRET_KEY", ""),
@@ -110,18 +102,12 @@ func LoadConfig(envPath string) (*Config, error) {
 	if cfg.JWTAccessSecret == "" || cfg.JWTRefreshSecret == "" {
 		return nil, fmt.Errorf("JWT_ACCESS_SECRET and JWT_REFRESH_SECRET are required")
 	}
-	if strings.TrimSpace(cfg.MindGateKeyEncryptionSecret) == "" {
-		cfg.MindGateKeyEncryptionSecret = cfg.JWTAccessSecret
-	}
 
 	if cfg.JWTAccessExpireMin <= 0 {
 		cfg.JWTAccessExpireMin = 30
 	}
 	if cfg.JWTRefreshExpireDay <= 0 {
 		cfg.JWTRefreshExpireDay = 7
-	}
-	if cfg.MindGateUpstreamTimeoutSec <= 0 {
-		cfg.MindGateUpstreamTimeoutSec = 300
 	}
 
 	if cfg.UploadMaxSizeMB <= 0 {
