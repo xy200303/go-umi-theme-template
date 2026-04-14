@@ -1,9 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { CameraOutlined, LoadingOutlined, UserOutlined } from '@ant-design/icons';
+import { CameraOutlined, LoadingOutlined } from '@ant-design/icons';
 import { Button, Input, Modal, Select, Upload } from 'antd';
 import type { UploadProps } from 'antd';
-import MainNavbar from '@/components/layout/MainNavbar';
-import SidebarLayout from '@/components/layout/SidebarLayout';
 import AppAvatar from '@/components/ui/AppAvatar';
 import { uploadUserFile } from '@/api/endpoints/file';
 import { changePhone, getProfile, resetPassword, updateProfile } from '@/api/endpoints/user';
@@ -14,8 +12,9 @@ import { routePaths } from '@/constants/routes';
 import { useNavigate } from '@/lib/router';
 import { useAuthStore } from '@/stores';
 import { useI18n } from '@/i18n';
-import { notifyError, notifySuccess, notifyWarning } from '@/lib/notify';
+import { notifySuccess, notifyWarning } from '@/lib/notify';
 import type { AuthUser } from '@/types/auth';
+import { ProfileShell } from './common';
 
 type ProfileForm = {
   email: string;
@@ -38,8 +37,6 @@ type PhoneForm = {
 };
 
 const labelCls = 'mb-1 block text-sm font-medium text-slate-600';
-const profileActiveKey = 'profile' as const;
-
 function createEmptyProfileForm(): ProfileForm {
   return {
     email: '',
@@ -82,7 +79,6 @@ export default function ProfilePage() {
   const { user, updateUser, clearLogin } = useAuthStore();
   const { t } = useI18n();
   const smsVerifyEnabled = useSmsVerifyEnabled();
-  const [collapsed, setCollapsed] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [phoneLoading, setPhoneLoading] = useState(false);
@@ -96,13 +92,6 @@ export default function ProfilePage() {
   const [passwordFormData, setPasswordFormData] = useState<PasswordForm>(createEmptyPasswordForm());
   const [phoneFormData, setPhoneFormData] = useState<PhoneForm>(createEmptyPhoneForm());
 
-  const profileMenuItems = [
-    {
-      key: profileActiveKey,
-      label: t('profile.menuProfile'),
-      icon: <UserOutlined />
-    }
-  ];
   const genderOptions = [
     { value: 'unknown', label: t('profile.genderUnknown') },
     { value: 'male', label: t('profile.genderMale') },
@@ -288,19 +277,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="app-shell p-3 pb-8">
-      <MainNavbar />
-
-      <SidebarLayout
-        title={t('nav.profile')}
-        items={profileMenuItems}
-        activeKey={profileActiveKey}
-        onChange={() => undefined}
-        collapsed={collapsed}
-        onToggle={() => setCollapsed((value) => !value)}
-        collapseLabel={t('profile.menuCollapse')}
-        expandLabel={t('profile.menuExpand')}
-      >
+    <ProfileShell activeKey="profile">
         <div className="flex min-h-full flex-col gap-4">
           <section>
             <div className="mb-8 flex flex-col items-center text-center">
@@ -411,8 +388,6 @@ export default function ProfilePage() {
             </div>
           </section>
         </div>
-      </SidebarLayout>
-
       <Modal
         open={passwordModalOpen}
         onCancel={resetPasswordModalState}
@@ -511,6 +486,6 @@ export default function ProfilePage() {
           </div>
         )}
       </Modal>
-    </div>
+    </ProfileShell>
   );
 }

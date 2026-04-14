@@ -18,6 +18,9 @@ func AutoMigrateAndSeed(db *gorm.DB, app *routes.AppContext) error {
 		&entities.SystemConfig{},
 		&entities.AuditLog{},
 		&entities.File{},
+		&entities.UserInterface{},
+		&entities.GatewayRequestLog{},
+		&entities.ChatRecord{},
 	); err != nil {
 		return fmt.Errorf("auto migrate failed: %w", err)
 	}

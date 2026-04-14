@@ -20,11 +20,11 @@ import (
 )
 
 type UserService struct {
-	cfg            *config.Config
-	userRepo       *userrepo.UserRepository
-	smsService     *authsvc.SMSService
-	casbin         *accesssvc.CasbinService
-	fileService    *filesvc.FileService
+	cfg         *config.Config
+	userRepo    *userrepo.UserRepository
+	smsService  *authsvc.SMSService
+	casbin      *accesssvc.CasbinService
+	fileService *filesvc.FileService
 }
 
 func NewUserService(
@@ -35,11 +35,11 @@ func NewUserService(
 	fileService *filesvc.FileService,
 ) *UserService {
 	return &UserService{
-		cfg:            cfg,
-		userRepo:       userRepo,
-		smsService:     smsService,
-		casbin:         casbin,
-		fileService:    fileService,
+		cfg:         cfg,
+		userRepo:    userRepo,
+		smsService:  smsService,
+		casbin:      casbin,
+		fileService: fileService,
 	}
 }
 
@@ -160,7 +160,7 @@ func (s *UserService) UploadAvatar(userID uint, fileHeader *multipart.FileHeader
 	}
 
 	item, err := s.fileService.UploadMultipartFile(fileHeader, filesvc.UploadFileOptions{
-		UserID:   userID,
+		UserID: userID,
 	})
 	if err != nil {
 		return "", err
